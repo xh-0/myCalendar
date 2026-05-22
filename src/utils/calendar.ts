@@ -68,6 +68,20 @@ export function formatMonthTitle(year: number, month: number): string {
   return `${year}年${month + 1}月`
 }
 
+export function shiftMonth(year: number, month: number, delta: number): { year: number; month: number } {
+  let m = month + delta
+  let y = year
+  while (m < 0) {
+    m += 12
+    y -= 1
+  }
+  while (m > 11) {
+    m -= 12
+    y += 1
+  }
+  return { year: y, month: m }
+}
+
 const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'] as const
 
 export function formatDayHeader(dateKey: string): string {

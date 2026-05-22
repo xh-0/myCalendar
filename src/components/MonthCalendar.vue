@@ -1,48 +1,50 @@
 <template>
   <view class="calendar">
     <view class="calendar-nav">
-      <view class="nav-btn" @tap="emit('prev-month')">
+      <view class="nav-btn" @tap="goPrevMonth">
         <text class="nav-arrow">‹</text>
       </view>
       <view class="month-label" @tap="emit('pick-month')">
         <text class="month-text">{{ monthTitle }}</text>
         <text class="month-chevron">▾</text>
       </view>
-      <view class="nav-btn" @tap="emit('next-month')">
+      <view class="nav-btn" @tap="goNextMonth">
         <text class="nav-arrow">›</text>
       </view>
     </view>
 
-    <view class="week-row">
-      <text v-for="label in weekLabels" :key="label" class="week-cell">{{ label }}</text>
-    </view>
-
-    <view class="days-grid">
-      <view
-        v-for="(cell, index) in days"
-        :key="`${year}-${month}-${index}-${cell.dateKey}`"
-        class="day-cell"
-        @tap="onSelect(cell)"
-      >
-        <view v-if="hasPriority(cell.dateKey)" class="priority-dot" />
-        <view
-          class="day-inner"
-          :class="{
-            'day-inner--other': !cell.isCurrentMonth,
-            'day-inner--selected': isSelected(cell),
-          }"
-        >
-          <text
-            class="day-num"
-            :class="{
-              'day-num--other': !cell.isCurrentMonth,
-              'day-num--selected': isSelected(cell),
-            }"
-          >{{ cell.day }}</text>
-          <view
-            v-if="hasSchedule(cell.dateKey)"
-            class="schedule-dot"
-            :class="{ 'schedule-dot--selected': isSelected(cell) }"
+    <view
+      id="calendar-body"
+      class="calendar-body"
+      :catchtouchmove="isDragging"
+      @touchstart="onTouchStart"
+      @touchmove.stop="onTouchMove"
+      @touchend="onTouchEnd"
+      @touchcancel="onTouchCancel"
+    >
+      <view class="calendar-track" :style="trackStyle">
+        <view class="calendar-panel" :style="panelStyle">
+          <CalendarGrid
+            :view-year="prevMonth.year"
+            :view-month="prevMonth.month"
+            :selected-date="selectedDate"
+            @select="onSelect"
+          />
+        </view>
+        <view class="calendar-panel" :style="panelStyle">
+          <CalendarGrid
+            :view-year="year"
+            :view-month="month"
+            :selected-date="selectedDate"
+            @select="onSelect"
+          />
+        </view>
+        <view class="calendar-panel" :style="panelStyle">
+          <CalendarGrid
+            :view-year="nextMonth.year"
+            :view-month="nextMonth.month"
+            :selected-date="selectedDate"
+            @select="onSelect"
           />
         </view>
       </view>
@@ -51,15 +53,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, getCurrentInstance, onMounted, ref, watch } from 'vue'
+import CalendarGrid from '@/components/CalendarGrid.vue'
 import {
-  buildCalendarGrid,
   formatMonthTitle,
-  getWeekLabels,
-  isDateSelected,
+  shiftMonth,
   type CalendarDay,
 } from '@/utils/calendar'
-import { hasPriorityOnDate, hasScheduleOnDate } from '@/mock/schedule'
+import {
+  clampDragOffset,
+  getSnapTarget,
+  getSwipeTouchState,
+  getTouchX,
+  getTouchY,
+  type SwipeTouchState,
+} from '@/utils/swipe'
+
+const SWIPE_DURATION = 340
+const SWIPE_EASING = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
 
 const props = defineProps<{
   year: number
@@ -74,24 +85,200 @@ const emit = defineEmits<{
   'pick-month': []
 }>()
 
-const weekLabels = getWeekLabels()
+const instance = getCurrentInstance()
+
+function getDefaultPanelWidth() {
+  const sys = uni.getSystemInfoSync()
+  return sys.windowWidth - uni.upx2px(48)
+}
+
+const panelWidth = ref(getDefaultPanelWidth())
+const dragOffset = ref(0)
+const animating = ref(false)
+const isDragging = ref(false)
+const swipeAxis = ref<'none' | 'horizontal' | 'vertical'>('none')
+
+const touchStart = ref<SwipeTouchState | null>(null)
+const lastMoveX = ref(0)
+const lastMoveTime = ref(0)
+const velocityX = ref(0)
+
+const prevMonth = computed(() => shiftMonth(props.year, props.month, -1))
+const nextMonth = computed(() => shiftMonth(props.year, props.month, 1))
 const monthTitle = computed(() => formatMonthTitle(props.year, props.month))
-const days = computed(() => buildCalendarGrid(props.year, props.month))
 
-function hasSchedule(dateKey: string) {
-  return hasScheduleOnDate(dateKey)
+const trackStyle = computed(() => {
+  const x = -panelWidth.value + dragOffset.value
+  const style: Record<string, string> = {
+    transform: `translate3d(${x}px, 0, 0)`,
+  }
+  if (animating.value) {
+    style.transition = `transform ${SWIPE_DURATION}ms ${SWIPE_EASING}`
+  } else {
+    style.transition = 'none'
+  }
+  return style
+})
+
+const panelStyle = computed(() => ({
+  width: `${panelWidth.value}px`,
+  flexShrink: '0',
+}))
+
+function measurePanelWidth() {
+  if (!instance) return
+  uni
+    .createSelectorQuery()
+    .in(instance)
+    .select('#calendar-body')
+    .boundingClientRect((rect) => {
+      const width = rect && !Array.isArray(rect) ? (rect.width ?? 0) : 0
+      if (width > 0) panelWidth.value = width
+    })
+    .exec()
 }
 
-function hasPriority(dateKey: string) {
-  return hasPriorityOnDate(dateKey)
-}
+onMounted(() => {
+  measurePanelWidth()
+})
 
-function isSelected(cell: CalendarDay) {
-  return isDateSelected(cell, props.selectedDate, props.year, props.month)
-}
+watch(
+  () => [props.year, props.month],
+  () => {
+    dragOffset.value = 0
+    animating.value = false
+    isDragging.value = false
+    swipeAxis.value = 'none'
+  },
+)
 
 function onSelect(cell: CalendarDay) {
+  if (isDragging.value || swipeAxis.value === 'horizontal') return
   emit('select-date', cell.dateKey)
+}
+
+function onTouchStart(e: TouchEvent) {
+  if (animating.value) return
+  measurePanelWidth()
+  touchStart.value = getSwipeTouchState(e)
+  lastMoveX.value = touchStart.value.startX
+  lastMoveTime.value = touchStart.value.time
+  velocityX.value = 0
+  swipeAxis.value = 'none'
+  animating.value = false
+  isDragging.value = false
+}
+
+function applyDrag(dx: number) {
+  dragOffset.value = clampDragOffset(dx, panelWidth.value)
+}
+
+function onTouchMove(e: TouchEvent) {
+  if (!touchStart.value || animating.value) return
+
+  const touch = e.touches[0]
+  if (!touch) return
+
+  const x = getTouchX(touch)
+  const y = getTouchY(touch)
+  const dx = x - touchStart.value.startX
+  const dy = y - touchStart.value.startY
+
+  if (swipeAxis.value === 'none') {
+    if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      swipeAxis.value = 'horizontal'
+      isDragging.value = true
+      applyDrag(dx)
+    } else {
+      swipeAxis.value = 'vertical'
+      touchStart.value = null
+      return
+    }
+  }
+
+  if (swipeAxis.value !== 'horizontal') return
+
+  const now = Date.now()
+  const dt = now - lastMoveTime.value
+  if (dt > 0) {
+    velocityX.value = (x - lastMoveX.value) / dt
+  }
+  lastMoveX.value = x
+  lastMoveTime.value = now
+
+  applyDrag(dx)
+}
+
+function onTouchEnd(e: TouchEvent) {
+  if (!touchStart.value || swipeAxis.value !== 'horizontal') {
+    resetTouch()
+    return
+  }
+
+  const touch = e.changedTouches[0]
+  const dx = touch ? getTouchX(touch) - touchStart.value.startX : dragOffset.value
+  const target = getSnapTarget(dx, panelWidth.value, velocityX.value)
+  resetTouch()
+
+  if (target === 0) {
+    snapTo(0)
+    return
+  }
+
+  snapTo(target === 1 ? -panelWidth.value : panelWidth.value, () => {
+    if (target === 1) emit('next-month')
+    else emit('prev-month')
+    dragOffset.value = 0
+    animating.value = false
+  })
+}
+
+function onTouchCancel() {
+  if (swipeAxis.value === 'horizontal') snapTo(0)
+  resetTouch()
+}
+
+function resetTouch() {
+  touchStart.value = null
+  isDragging.value = false
+  swipeAxis.value = 'none'
+  velocityX.value = 0
+}
+
+function snapTo(offset: number, onDone?: () => void) {
+  animating.value = true
+  dragOffset.value = offset
+  setTimeout(() => {
+    if (onDone) onDone()
+    else animating.value = false
+  }, SWIPE_DURATION)
+}
+
+function goPrevMonth() {
+  if (animating.value) return
+  if (!panelWidth.value) {
+    emit('prev-month')
+    return
+  }
+  snapTo(panelWidth.value, () => {
+    emit('prev-month')
+    dragOffset.value = 0
+    animating.value = false
+  })
+}
+
+function goNextMonth() {
+  if (animating.value) return
+  if (!panelWidth.value) {
+    emit('next-month')
+    return
+  }
+  snapTo(-panelWidth.value, () => {
+    emit('next-month')
+    dragOffset.value = 0
+    animating.value = false
+  })
 }
 </script>
 
@@ -146,88 +333,20 @@ function onSelect(cell: CalendarDay) {
   margin-top: 4rpx;
 }
 
-.week-row {
+.calendar-body {
+  overflow: hidden;
+  width: 100%;
+  touch-action: pan-y;
+}
+
+.calendar-track {
   display: flex;
   flex-direction: row;
-  margin-bottom: 12rpx;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
-.week-cell {
-  flex: 1;
-  text-align: center;
-  font-size: 26rpx;
-  color: #999999;
-  line-height: 48rpx;
-}
-
-.days-grid {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-}
-
-.day-cell {
-  width: 14.2857%;
-  height: 88rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.priority-dot {
-  position: absolute;
-  top: 6rpx;
-  width: 8rpx;
-  height: 8rpx;
-  border-radius: 50%;
-  background: #ff4d4f;
-  z-index: 2;
-}
-
-.day-inner {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 16rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.day-inner--selected {
-  background: #10ad61;
-}
-
-.day-num {
-  font-size: 30rpx;
-  color: #1a1a1a;
-  line-height: 1.2;
-}
-
-.day-num--other {
-  color: #d8d8d8;
-}
-
-.day-num--selected {
-  color: #ffffff;
-  font-weight: 600;
-}
-
-.schedule-dot {
-  width: 8rpx;
-  height: 8rpx;
-  border-radius: 50%;
-  background: #10ad61;
-  margin-top: 4rpx;
-}
-
-.schedule-dot--selected {
-  background: #ffffff;
-}
-
-.day-inner--other .schedule-dot {
-  background: #c8e6d4;
+.calendar-panel {
+  flex-shrink: 0;
 }
 </style>
