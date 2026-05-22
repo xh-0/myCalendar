@@ -71,8 +71,25 @@ export function formatMonthTitle(year: number, month: number): string {
 const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'] as const
 
 export function formatDayHeader(dateKey: string): string {
-  const [y, m, d] = dateKey.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
+  const { year, month, day } = parseDateKey(dateKey)
+  const date = new Date(year, month, day)
   const weekday = WEEKDAY_NAMES[date.getDay()]
-  return `${m}月${d}日 ${weekday}`
+  return `${month + 1}月${day}日 ${weekday}`
+}
+
+export function parseDateKey(dateKey: string): { year: number; month: number; day: number } {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  return { year, month: month - 1, day }
+}
+
+/** 选中态仅在该日期属于当前展示月份时高亮，避免跨月后出现两个选中格 */
+export function isDateSelected(
+  cell: CalendarDay,
+  selectedDate: string,
+  viewYear: number,
+  viewMonth: number,
+): boolean {
+  if (cell.dateKey !== selectedDate) return false
+  const sel = parseDateKey(selectedDate)
+  return sel.year === viewYear && sel.month === viewMonth
 }

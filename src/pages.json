@@ -3,15 +3,15 @@
     {
       "path": "pages/index/index",
       "style": {
-        "navigationStyle": "custom",
+        "disableScroll": false,
         "navigationBarTitleText": "日程"
       }
     },
     {
       "path": "pages/profile/profile",
       "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "我"
+        "disableScroll": false,
+        "navigationBarTitleText": "我的"
       }
     }
   ],
@@ -20,5 +20,25 @@
     "navigationBarTitleText": "我的日历",
     "navigationBarBackgroundColor": "#F5F5F5",
     "backgroundColor": "#F5F5F5"
+  },
+  "tabBar": {
+    "color": "#666666",
+    "selectedColor": "#10AD61",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "日程",
+        "iconPath": "static/tab/schedule.png",
+        "selectedIconPath": "static/tab/schedule-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "static/tab/profile.png",
+        "selectedIconPath": "static/tab/profile-active.png"
+      }
+    ]
   }
 }

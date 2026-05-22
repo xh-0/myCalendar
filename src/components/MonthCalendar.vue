@@ -19,8 +19,8 @@
 
     <view class="days-grid">
       <view
-        v-for="cell in days"
-        :key="cell.dateKey"
+        v-for="(cell, index) in days"
+        :key="`${year}-${month}-${index}-${cell.dateKey}`"
         class="day-cell"
         @tap="onSelect(cell)"
       >
@@ -29,20 +29,20 @@
           class="day-inner"
           :class="{
             'day-inner--other': !cell.isCurrentMonth,
-            'day-inner--selected': cell.dateKey === selectedDate,
+            'day-inner--selected': isSelected(cell),
           }"
         >
           <text
             class="day-num"
             :class="{
               'day-num--other': !cell.isCurrentMonth,
-              'day-num--selected': cell.dateKey === selectedDate,
+              'day-num--selected': isSelected(cell),
             }"
           >{{ cell.day }}</text>
           <view
             v-if="hasSchedule(cell.dateKey)"
             class="schedule-dot"
-            :class="{ 'schedule-dot--selected': cell.dateKey === selectedDate }"
+            :class="{ 'schedule-dot--selected': isSelected(cell) }"
           />
         </view>
       </view>
@@ -56,6 +56,7 @@ import {
   buildCalendarGrid,
   formatMonthTitle,
   getWeekLabels,
+  isDateSelected,
   type CalendarDay,
 } from '@/utils/calendar'
 import { hasPriorityOnDate, hasScheduleOnDate } from '@/mock/schedule'
@@ -83,6 +84,10 @@ function hasSchedule(dateKey: string) {
 
 function hasPriority(dateKey: string) {
   return hasPriorityOnDate(dateKey)
+}
+
+function isSelected(cell: CalendarDay) {
+  return isDateSelected(cell, props.selectedDate, props.year, props.month)
 }
 
 function onSelect(cell: CalendarDay) {
