@@ -1,3 +1,11 @@
+import { ref } from 'vue'
+
+export const scheduleVersion = ref(0)
+
+function bumpScheduleVersion() {
+  scheduleVersion.value += 1
+}
+
 export interface ScheduleItem {
   id: string
   date: string
@@ -305,6 +313,7 @@ export function addSchedule(
   const maxNum = MOCK_SCHEDULES.reduce((max, s) => Math.max(max, Number(s.id) || 0), 0)
   const newItem: ScheduleItem = { ...item, id: String(maxNum + 1) }
   MOCK_SCHEDULES.push(newItem)
+  bumpScheduleVersion()
   return newItem
 }
 
@@ -316,5 +325,6 @@ export function updateSchedule(
   if (index === -1) return undefined
   const updated: ScheduleItem = { ...MOCK_SCHEDULES[index], ...item, id }
   MOCK_SCHEDULES[index] = updated
+  bumpScheduleVersion()
   return updated
 }

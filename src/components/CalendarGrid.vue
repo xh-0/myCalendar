@@ -45,12 +45,13 @@ import {
   isDateSelected,
   type CalendarDay,
 } from '@/utils/calendar'
-import { hasPriorityOnDate, hasScheduleOnDate } from '@/mock/schedule'
+import { hasPriorityOnDate, hasScheduleOnDate, scheduleVersion } from '@/mock/schedule'
 
 const props = defineProps<{
   viewYear: number
   viewMonth: number
   selectedDate: string
+  refreshKey?: number
 }>()
 
 const emit = defineEmits<{
@@ -61,10 +62,14 @@ const weekLabels = getWeekLabels()
 const days = computed(() => buildCalendarGrid(props.viewYear, props.viewMonth))
 
 function hasSchedule(dateKey: string) {
+  props.refreshKey
+  scheduleVersion.value
   return hasScheduleOnDate(dateKey)
 }
 
 function hasPriority(dateKey: string) {
+  props.refreshKey
+  scheduleVersion.value
   return hasPriorityOnDate(dateKey)
 }
 

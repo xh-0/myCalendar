@@ -4,6 +4,7 @@
       :year="viewYear"
       :month="viewMonth"
       :selected-date="selectedDate"
+      :refresh-key="pageRefreshKey"
       @select-date="onSelectDate"
       @prev-month="onPrevMonth"
       @next-month="onNextMonth"
@@ -21,11 +22,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { onShow } from "@dcloudio/uni-app";
 import MonthCalendar from "@/components/MonthCalendar.vue";
 import DayScheduleCard from "@/components/DayScheduleCard.vue";
 import dayjs from "dayjs";
 
-import { getSchedulesByDate } from "@/mock/schedule";
+import { getSchedulesByDate, scheduleVersion } from "@/mock/schedule";
 import { parseDateKey } from "@/utils/calendar";
 
 const DEFAULT_DATE = dayjs().format("YYYY-MM-DD");
@@ -34,7 +36,17 @@ const viewYear = ref(dayjs().year());
 const viewMonth = ref(dayjs().month());
 const selectedDate = ref(DEFAULT_DATE);
 
-const daySchedules = computed(() => getSchedulesByDate(selectedDate.value));
+const pageRefreshKey = ref(0);
+
+const daySchedules = computed(() => {
+  pageRefreshKey.value;
+  scheduleVersion.value;
+  return getSchedulesByDate(selectedDate.value);
+});
+
+onShow(() => {
+  pageRefreshKey.value += 1;
+});
 
 function onSelectDate(dateKey: string) {
   selectedDate.value = dateKey;

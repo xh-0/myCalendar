@@ -43,6 +43,7 @@
             :view-year="prevMonth.year"
             :view-month="prevMonth.month"
             :selected-date="selectedDate"
+            :refresh-key="refreshKey"
             @select="onSelect"
           />
         </view>
@@ -51,6 +52,7 @@
             :view-year="year"
             :view-month="month"
             :selected-date="selectedDate"
+            :refresh-key="refreshKey"
             @select="onSelect"
           />
         </view>
@@ -59,6 +61,7 @@
             :view-year="nextMonth.year"
             :view-month="nextMonth.month"
             :selected-date="selectedDate"
+            :refresh-key="refreshKey"
             @select="onSelect"
           />
         </view>
@@ -91,6 +94,7 @@ const props = defineProps<{
   year: number
   month: number
   selectedDate: string
+  refreshKey?: number
 }>()
 
 const emit = defineEmits<{
