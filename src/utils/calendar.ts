@@ -96,6 +96,11 @@ export function parseDateKey(dateKey: string): { year: number; month: number; da
   return { year, month: month - 1, day }
 }
 
+export function formatWeekdayShort(dateKey: string): string {
+  const { year, month, day } = parseDateKey(dateKey)
+  return WEEKDAY_NAMES[new Date(year, month, day).getDay()]
+}
+
 /** 选中态仅在该日期属于当前展示月份时高亮，避免跨月后出现两个选中格 */
 export function isDateSelected(
   cell: CalendarDay,

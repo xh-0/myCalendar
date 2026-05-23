@@ -91,3 +91,20 @@ export function getDatesWithSchedulesInMonth(year: number, month: number): Set<s
   })
   return set
 }
+
+export const PLAN_TYPES = [
+  { label: '聊天', icon: '💬' },
+  { label: '工作', icon: '💼' },
+  { label: '生活', icon: '🌿' },
+  { label: '运动', icon: '🏃' },
+  { label: '其他', icon: '📌' },
+] as const
+
+export function addSchedule(
+  item: Omit<ScheduleItem, 'id'>,
+): ScheduleItem {
+  const maxNum = MOCK_SCHEDULES.reduce((max, s) => Math.max(max, Number(s.id) || 0), 0)
+  const newItem: ScheduleItem = { ...item, id: String(maxNum + 1) }
+  MOCK_SCHEDULES.push(newItem)
+  return newItem
+}

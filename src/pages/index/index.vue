@@ -65,7 +65,9 @@ function onPickMonth() {
 }
 
 function onAddPlan() {
-  uni.showToast({ title: "添加计划功能开发中", icon: "none" });
+  uni.navigateTo({
+    url: `/pages/add-plan/add-plan?date=${selectedDate.value}`,
+  });
 }
 
 function onTaskMore(id: string) {
