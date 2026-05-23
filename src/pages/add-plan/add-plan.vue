@@ -7,7 +7,7 @@
             v-model="title"
             class="title-input"
             type="text"
-            placeholder="今天想做什么"
+            placeholder="拍摄主题"
             placeholder-class="title-placeholder"
             maxlength="50"
           />
@@ -258,6 +258,9 @@ function onSubmit() {
     title: trimmed,
     category: type.label,
     categoryIcon: type.icon,
+    location: location.value.trim() || undefined,
+    peopleCount: peopleCount.value,
+    wechatNotify: wechatNotify.value,
   });
 
   if (wechatNotify.value) {

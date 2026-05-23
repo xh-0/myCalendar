@@ -30,6 +30,21 @@
         <text class="info-label">类型</text>
         <text class="info-value">{{ plan.category }} {{ plan.categoryIcon }}</text>
       </view>
+      <view v-if="plan.location" class="info-divider" />
+      <view v-if="plan.location" class="info-row info-row--top">
+        <text class="info-label">地点</text>
+        <text class="info-value info-value--wrap">{{ plan.location }}</text>
+      </view>
+      <view v-if="plan.peopleCount" class="info-divider" />
+      <view v-if="plan.peopleCount" class="info-row">
+        <text class="info-label">人数</text>
+        <text class="info-value">{{ plan.peopleCount }} 人</text>
+      </view>
+      <view class="info-divider" />
+      <view class="info-row">
+        <text class="info-label">微信提醒</text>
+        <text class="info-value">{{ plan.wechatNotify ? "已开启" : "未开启" }}</text>
+      </view>
     </view>
 
     <view class="action-card">
@@ -176,6 +191,16 @@ function onEdit() {
   font-weight: 500;
   color: #1a1a1a;
   text-align: right;
+}
+
+.info-value--wrap {
+  flex: 1;
+  margin-left: 24rpx;
+  line-height: 1.5;
+}
+
+.info-row--top {
+  align-items: flex-start;
 }
 
 .info-extra {
