@@ -51,25 +51,25 @@
               />
             </view>
           </view>
-          <view v-if="!allDay" class="time-pickers">
-            <picker mode="time" :value="startTime" @change="onStartTimeChange">
-              <view class="time-box">
-                <text class="time-box-label">开始</text>
-                <view class="time-box-value-row">
-                  <text class="time-box-value">{{ startTime }}</text>
-                  <text class="time-chevron">›</text>
-                </view>
+          <picker
+            v-if="!allDay"
+            mode="time"
+            :value="startTime"
+            @change="onStartTimeChange"
+          >
+            <view class="time-box">
+              <text class="time-box-label">开始</text>
+              <view class="time-box-value-row">
+                <text class="time-box-value">{{ startTime }}</text>
+                <text class="time-chevron">›</text>
               </view>
-            </picker>
-            <picker mode="time" :value="endTime" @change="onEndTimeChange">
-              <view class="time-box">
-                <text class="time-box-label">结束</text>
-                <view class="time-box-value-row">
-                  <text class="time-box-value">{{ endTime }}</text>
-                  <text class="time-chevron">›</text>
-                </view>
-              </view>
-            </picker>
+            </view>
+          </picker>
+          <view v-else class="time-box">
+            <text class="time-box-label">开始</text>
+            <view class="time-box-value-row">
+              <text class="time-box-value">00:00</text>
+            </view>
           </view>
         </view>
 
@@ -87,20 +87,31 @@
         </view>
 
         <view class="card card--people">
-          <view class="people-header">
-            <text class="field-label">人数</text>
-            <text class="people-count">{{ peopleCount }} 人</text>
+          <text class="field-label">人数</text>
+          <view class="stepper">
+            <view
+              class="stepper-btn"
+              :class="{ 'stepper-btn--disabled': peopleCount <= PEOPLE_MIN }"
+              @tap="decreasePeople"
+            >
+              <text class="stepper-btn-text">−</text>
+            </view>
+            <input
+              class="stepper-input"
+              type="number"
+              :value="peopleInput"
+              @input="onPeopleInput"
+              @blur="onPeopleBlur"
+            />
+            <text class="stepper-unit">人</text>
+            <view
+              class="stepper-btn"
+              :class="{ 'stepper-btn--disabled': peopleCount >= PEOPLE_MAX }"
+              @tap="increasePeople"
+            >
+              <text class="stepper-btn-text">+</text>
+            </view>
           </view>
-          <slider
-            class="people-slider"
-            :min="1"
-            :max="30"
-            :value="peopleCount"
-            active-color="#10ad61"
-            background-color="#e8e8e8"
-            block-size="20"
-            @change="onPeopleChange"
-          />
         </view>
 
         <view class="card card--notify">
@@ -137,15 +148,18 @@ import { addSchedule, PLAN_TYPES } from "@/mock/schedule";
 import { formatWeekdayShort } from "@/utils/calendar";
 
 const typeLabels = PLAN_TYPES.map((t) => t.label);
+const PEOPLE_MIN = 1;
+const PEOPLE_MAX = 99;
 
 const title = ref("");
 const typeIndex = ref(0);
 const formDate = ref(dayjs().format("YYYY-MM-DD"));
 const allDay = ref(false);
 const startTime = ref("11:00");
-const endTime = ref("13:00");
+const lastStartTime = ref("11:00");
 const location = ref("");
 const peopleCount = ref(1);
+const peopleInput = ref("1");
 const wechatNotify = ref(true);
 
 const selectedType = computed(() => PLAN_TYPES[typeIndex.value]);
@@ -168,19 +182,55 @@ function onDateChange(e: { detail: { value: string } }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function onAllDayChange(e: any) {
-  allDay.value = Boolean(e.detail.value);
+  const checked = Boolean(e.detail.value);
+  if (checked) {
+    lastStartTime.value = startTime.value;
+    startTime.value = "00:00";
+  } else {
+    startTime.value = lastStartTime.value;
+  }
+  allDay.value = checked;
 }
 
 function onStartTimeChange(e: { detail: { value: string } }) {
   startTime.value = e.detail.value;
+  lastStartTime.value = e.detail.value;
 }
 
-function onEndTimeChange(e: { detail: { value: string } }) {
-  endTime.value = e.detail.value;
+function clampPeople(n: number) {
+  return Math.min(PEOPLE_MAX, Math.max(PEOPLE_MIN, n));
 }
 
-function onPeopleChange(e: { detail: { value: number } }) {
-  peopleCount.value = e.detail.value;
+function syncPeopleInput() {
+  peopleInput.value = String(peopleCount.value);
+}
+
+function decreasePeople() {
+  if (peopleCount.value <= PEOPLE_MIN) return;
+  peopleCount.value -= 1;
+  syncPeopleInput();
+}
+
+function increasePeople() {
+  if (peopleCount.value >= PEOPLE_MAX) return;
+  peopleCount.value += 1;
+  syncPeopleInput();
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function onPeopleInput(e: any) {
+  const raw = String(e.detail.value);
+  peopleInput.value = raw;
+  const n = parseInt(raw, 10);
+  if (!Number.isNaN(n)) {
+    peopleCount.value = n;
+  }
+}
+
+function onPeopleBlur() {
+  const n = parseInt(peopleInput.value, 10);
+  peopleCount.value = clampPeople(Number.isNaN(n) ? PEOPLE_MIN : n);
+  syncPeopleInput();
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -196,11 +246,6 @@ function onSubmit() {
   const trimmed = title.value.trim();
   if (!trimmed) {
     uni.showToast({ title: "请填写计划标题", icon: "none" });
-    return;
-  }
-
-  if (!allDay.value && startTime.value >= endTime.value) {
-    uni.showToast({ title: "结束时间需晚于开始时间", icon: "none" });
     return;
   }
 
@@ -319,7 +364,7 @@ function onSubmit() {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24rpx;
+  margin-bottom: 20rpx;
 }
 
 .time-header .field-label {
@@ -338,14 +383,7 @@ function onSubmit() {
   color: #666666;
 }
 
-.time-pickers {
-  display: flex;
-  flex-direction: row;
-  gap: 20rpx;
-}
-
 .time-box {
-  flex: 1;
   padding: 24rpx 28rpx;
   border: 1rpx solid #eeeeee;
   border-radius: 16rpx;
@@ -378,29 +416,58 @@ function onSubmit() {
 }
 
 .card--people {
-  padding: 28rpx 32rpx 20rpx;
+  padding: 28rpx 32rpx 32rpx;
 }
 
-.people-header {
+.card--people .field-label {
+  margin-bottom: 20rpx;
+}
+
+.stepper {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8rpx;
+  justify-content: flex-end;
+  gap: 16rpx;
 }
 
-.people-header .field-label {
-  margin-bottom: 0;
+.stepper-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 12rpx;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.people-count {
+.stepper-btn--disabled {
+  opacity: 0.35;
+}
+
+.stepper-btn-text {
+  font-size: 36rpx;
+  font-weight: 500;
+  color: #1a1a1a;
+  line-height: 1;
+}
+
+.stepper-input {
+  width: 96rpx;
+  height: 64rpx;
+  text-align: center;
   font-size: 32rpx;
   font-weight: 600;
   color: #1a1a1a;
+  background: #fafafa;
+  border: 1rpx solid #eeeeee;
+  border-radius: 12rpx;
 }
 
-.people-slider {
-  margin: 8rpx 0 0;
+.stepper-unit {
+  font-size: 28rpx;
+  color: #666666;
+  margin-right: 8rpx;
 }
 
 .card--notify {

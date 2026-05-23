@@ -21,6 +21,14 @@
         "navigationBarBackgroundColor": "#F7F8FA",
         "backgroundColor": "#F7F8FA"
       }
+    },
+    {
+      "path": "pages/plan-detail/plan-detail",
+      "style": {
+        "navigationBarTitleText": "计划详情",
+        "navigationBarBackgroundColor": "#F7F8FA",
+        "backgroundColor": "#F7F8FA"
+      }
     }
   ],
   "globalStyle": {

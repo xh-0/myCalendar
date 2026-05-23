@@ -75,6 +75,10 @@ export function getSchedulesByDate(dateKey: string): ScheduleItem[] {
   )
 }
 
+export function getScheduleById(id: string): ScheduleItem | undefined {
+  return MOCK_SCHEDULES.find((s) => s.id === id)
+}
+
 export function hasScheduleOnDate(dateKey: string): boolean {
   return MOCK_SCHEDULES.some((s) => s.date === dateKey)
 }

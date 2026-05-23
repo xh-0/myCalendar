@@ -71,7 +71,9 @@ function onAddPlan() {
 }
 
 function onTaskMore(id: string) {
-  uni.showToast({ title: `计划 ${id}`, icon: "none" });
+  uni.navigateTo({
+    url: `/pages/plan-detail/plan-detail?id=${id}`,
+  });
 }
 </script>
 
