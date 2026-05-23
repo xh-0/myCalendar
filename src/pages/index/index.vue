@@ -8,6 +8,7 @@
       @prev-month="onPrevMonth"
       @next-month="onNextMonth"
       @pick-month="onPickMonth"
+      @go-today="onGoToday"
     />
     <DayScheduleCard
       :date-key="selectedDate"
@@ -60,8 +61,16 @@ function onNextMonth() {
   }
 }
 
-function onPickMonth() {
-  uni.showToast({ title: "月份选择即将上线", icon: "none" });
+function onPickMonth(year: number, month: number) {
+  viewYear.value = year;
+  viewMonth.value = month;
+}
+
+function onGoToday() {
+  const today = dayjs();
+  viewYear.value = today.year();
+  viewMonth.value = today.month();
+  selectedDate.value = today.format("YYYY-MM-DD");
 }
 
 function onAddPlan() {

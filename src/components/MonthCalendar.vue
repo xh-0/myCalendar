@@ -1,16 +1,31 @@
 <template>
   <view class="calendar">
-    <view class="calendar-nav">
-      <view class="nav-btn" @tap="goPrevMonth">
-        <text class="nav-arrow">‹</text>
+    <view class="calendar-header">
+      <view class="today-btn" @tap="emit('go-today')">
+        <text class="today-text">今天</text>
       </view>
-      <view class="month-label" @tap="emit('pick-month')">
-        <text class="month-text">{{ monthTitle }}</text>
-        <text class="month-chevron">▾</text>
+      <view class="calendar-nav">
+        <view class="nav-btn" @tap="goPrevMonth">
+          <text class="nav-arrow">‹</text>
+        </view>
+        <picker
+          mode="date"
+          fields="month"
+          :value="monthPickerValue"
+          :start="pickerStart"
+          :end="pickerEnd"
+          @change="onMonthPickerChange"
+        >
+          <view class="month-label">
+            <text class="month-text">{{ monthTitle }}</text>
+            <text class="month-chevron">▾</text>
+          </view>
+        </picker>
+        <view class="nav-btn" @tap="goNextMonth">
+          <text class="nav-arrow">›</text>
+        </view>
       </view>
-      <view class="nav-btn" @tap="goNextMonth">
-        <text class="nav-arrow">›</text>
-      </view>
+      <view class="header-side" />
     </view>
 
     <view
@@ -82,8 +97,12 @@ const emit = defineEmits<{
   'select-date': [dateKey: string]
   'prev-month': []
   'next-month': []
-  'pick-month': []
+  'pick-month': [year: number, month: number]
+  'go-today': []
 }>()
+
+const PICKER_START = '2020-01'
+const PICKER_END = '2035-12'
 
 const instance = getCurrentInstance()
 
@@ -106,6 +125,19 @@ const velocityX = ref(0)
 const prevMonth = computed(() => shiftMonth(props.year, props.month, -1))
 const nextMonth = computed(() => shiftMonth(props.year, props.month, 1))
 const monthTitle = computed(() => formatMonthTitle(props.year, props.month))
+
+const monthPickerValue = computed(() => {
+  const m = String(props.month + 1).padStart(2, '0')
+  return `${props.year}-${m}`
+})
+
+const pickerStart = PICKER_START
+const pickerEnd = PICKER_END
+
+function onMonthPickerChange(e: { detail: { value: string } }) {
+  const [year, month] = e.detail.value.split('-').map(Number)
+  emit('pick-month', year, month - 1)
+}
 
 const trackStyle = computed(() => {
   const x = -panelWidth.value + dragOffset.value
@@ -287,13 +319,41 @@ function goNextMonth() {
   padding: 0 8rpx 16rpx;
 }
 
-.calendar-nav {
+.calendar-header {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
   margin-bottom: 28rpx;
-  padding: 0 16rpx;
+  padding: 0 8rpx;
+}
+
+.today-btn {
+  flex-shrink: 0;
+  padding: 10rpx 24rpx;
+  border-radius: 32rpx;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.today-text {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #10ad61;
+  line-height: 1.2;
+}
+
+.calendar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 32rpx;
+}
+
+.header-side {
+  flex-shrink: 0;
+  width: 104rpx;
 }
 
 .nav-btn {

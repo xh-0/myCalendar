@@ -15,6 +15,7 @@
           class="day-inner"
           :class="{
             'day-inner--other': !cell.isCurrentMonth,
+            'day-inner--today': cell.isToday,
             'day-inner--selected': isSelected(cell),
           }"
         >
@@ -121,6 +122,15 @@ function isSelected(cell: CalendarDay) {
   align-items: center;
   justify-content: center;
   position: relative;
+}
+
+.day-inner--today {
+  border: 2rpx solid #10ad61;
+  box-sizing: border-box;
+}
+
+.day-inner--today.day-inner--selected {
+  border-color: #ffffff;
 }
 
 .day-inner--selected {
