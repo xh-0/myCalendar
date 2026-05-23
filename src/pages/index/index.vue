@@ -22,14 +22,15 @@
 import { computed, ref } from "vue";
 import MonthCalendar from "@/components/MonthCalendar.vue";
 import DayScheduleCard from "@/components/DayScheduleCard.vue";
+import dayjs from "dayjs";
 
 import { getSchedulesByDate } from "@/mock/schedule";
 import { parseDateKey } from "@/utils/calendar";
 
-const DEFAULT_DATE = "2024-05-24";
+const DEFAULT_DATE = dayjs().format("YYYY-MM-DD");
 
-const viewYear = ref(2024);
-const viewMonth = ref(4);
+const viewYear = ref(dayjs().year());
+const viewMonth = ref(dayjs().month());
 const selectedDate = ref(DEFAULT_DATE);
 
 const daySchedules = computed(() => getSchedulesByDate(selectedDate.value));
