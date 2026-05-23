@@ -134,7 +134,7 @@
 
     <view class="footer">
       <view class="submit-btn" @tap="onSubmit">
-        <text class="submit-text">发布活动</text>
+        <text class="submit-text">{{ isEditMode ? "保存修改" : "发布活动" }}</text>
       </view>
     </view>
   </view>
@@ -144,12 +144,19 @@
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import dayjs from "dayjs";
-import { addSchedule, PLAN_TYPES } from "@/mock/schedule";
+import {
+  addSchedule,
+  getScheduleById,
+  PLAN_TYPES,
+  updateSchedule,
+} from "@/mock/schedule";
 import { formatWeekdayShort } from "@/utils/calendar";
 
 const typeLabels = PLAN_TYPES.map((t) => t.label);
 const PEOPLE_MIN = 1;
 const PEOPLE_MAX = 99;
+
+const editId = ref<string | null>(null);
 
 const title = ref("");
 const typeIndex = ref(0);
@@ -164,8 +171,47 @@ const wechatNotify = ref(true);
 
 const selectedType = computed(() => PLAN_TYPES[typeIndex.value]);
 const weekdayLabel = computed(() => formatWeekdayShort(formDate.value));
+const isEditMode = computed(() => !!editId.value);
+
+function findTypeIndex(category: string) {
+  const idx = PLAN_TYPES.findIndex((t) => t.label === category);
+  return idx >= 0 ? idx : 0;
+}
+
+function loadPlanForEdit(id: string) {
+  const item = getScheduleById(id);
+  if (!item) {
+    uni.showToast({ title: "计划不存在", icon: "none" });
+    setTimeout(() => uni.navigateBack(), 400);
+    return;
+  }
+
+  editId.value = id;
+  title.value = item.title;
+  typeIndex.value = findTypeIndex(item.category);
+  formDate.value = item.date;
+  allDay.value = item.time === "全天";
+  if (allDay.value) {
+    startTime.value = "00:00";
+    lastStartTime.value = "11:00";
+  } else {
+    startTime.value = item.time;
+    lastStartTime.value = item.time;
+  }
+  location.value = item.location ?? "";
+  peopleCount.value = item.peopleCount ?? 1;
+  syncPeopleInput();
+  wechatNotify.value = item.wechatNotify ?? true;
+  uni.setNavigationBarTitle({ title: "编辑计划" });
+}
 
 onLoad((options) => {
+  const id = options?.id;
+  if (typeof id === "string" && id) {
+    loadPlanForEdit(id);
+    return;
+  }
+
   const date = options?.date;
   if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
     formDate.value = date;
@@ -252,7 +298,7 @@ function onSubmit() {
   const time = allDay.value ? "全天" : startTime.value;
   const type = selectedType.value;
 
-  addSchedule({
+  const payload = {
     date: formDate.value,
     time,
     title: trimmed,
@@ -261,12 +307,22 @@ function onSubmit() {
     location: location.value.trim() || undefined,
     peopleCount: peopleCount.value,
     wechatNotify: wechatNotify.value,
-  });
+  };
 
-  if (wechatNotify.value) {
-    uni.showToast({ title: "已保存，订阅提醒即将上线", icon: "none" });
+  if (editId.value) {
+    const updated = updateSchedule(editId.value, payload);
+    if (!updated) {
+      uni.showToast({ title: "保存失败", icon: "none" });
+      return;
+    }
+    uni.showToast({ title: "已保存", icon: "success" });
   } else {
-    uni.showToast({ title: "计划已发布", icon: "success" });
+    addSchedule(payload);
+    if (wechatNotify.value) {
+      uni.showToast({ title: "已保存，订阅提醒即将上线", icon: "none" });
+    } else {
+      uni.showToast({ title: "计划已发布", icon: "success" });
+    }
   }
 
   setTimeout(() => {

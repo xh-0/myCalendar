@@ -64,11 +64,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { getScheduleById, type ScheduleItem } from "@/mock/schedule";
 import { formatWeekdayShort } from "@/utils/calendar";
 
 const plan = ref<ScheduleItem | null>(null);
+const planId = ref<string | null>(null);
 
 const weekdayLabel = computed(() =>
   plan.value ? formatWeekdayShort(plan.value.date) : "",
@@ -82,7 +83,14 @@ const timeLabel = computed(() => {
 onLoad((options) => {
   const id = options?.id;
   if (typeof id === "string" && id) {
+    planId.value = id;
     plan.value = getScheduleById(id) ?? null;
+  }
+});
+
+onShow(() => {
+  if (planId.value) {
+    plan.value = getScheduleById(planId.value) ?? null;
   }
 });
 
@@ -91,7 +99,10 @@ function goBack() {
 }
 
 function onEdit() {
-  uni.showToast({ title: "编辑功能即将上线", icon: "none" });
+  if (!plan.value) return;
+  uni.navigateTo({
+    url: `/pages/add-plan/add-plan?id=${plan.value.id}`,
+  });
 }
 </script>
 

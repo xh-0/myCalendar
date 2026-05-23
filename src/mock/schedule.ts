@@ -307,3 +307,14 @@ export function addSchedule(
   MOCK_SCHEDULES.push(newItem)
   return newItem
 }
+
+export function updateSchedule(
+  id: string,
+  item: Omit<ScheduleItem, 'id'>,
+): ScheduleItem | undefined {
+  const index = MOCK_SCHEDULES.findIndex((s) => s.id === id)
+  if (index === -1) return undefined
+  const updated: ScheduleItem = { ...MOCK_SCHEDULES[index], ...item, id }
+  MOCK_SCHEDULES[index] = updated
+  return updated
+}
