@@ -1,6 +1,6 @@
 <template>
-  <view class="calendar-grid">
-    <view class="week-row">
+  <view class="calendar-grid" :class="{ 'calendar-grid--compact': compact }">
+    <view v-if="!hideWeekHeader" class="week-row">
       <text v-for="label in weekLabels" :key="label" class="week-cell">{{ label }}</text>
     </view>
     <view class="days-grid">
@@ -52,6 +52,8 @@ const props = defineProps<{
   viewMonth: number
   selectedDate: string
   refreshKey?: number
+  compact?: boolean
+  hideWeekHeader?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -171,5 +173,41 @@ function isSelected(cell: CalendarDay) {
 
 .day-inner--other .schedule-dot {
   background: #c8e6d4;
+}
+
+.calendar-grid--compact .week-cell {
+  font-size: 24rpx;
+  line-height: 40rpx;
+  margin-bottom: 0;
+}
+
+.calendar-grid--compact .week-row {
+  margin-bottom: 4rpx;
+}
+
+.calendar-grid--compact .day-cell {
+  height: 76rpx;
+}
+
+.calendar-grid--compact .day-inner {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 14rpx;
+}
+
+.calendar-grid--compact .day-num {
+  font-size: 28rpx;
+}
+
+.calendar-grid--compact .schedule-dot {
+  width: 7rpx;
+  height: 7rpx;
+  margin-top: 3rpx;
+}
+
+.calendar-grid--compact .priority-dot {
+  top: 5rpx;
+  width: 7rpx;
+  height: 7rpx;
 }
 </style>

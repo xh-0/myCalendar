@@ -8,6 +8,13 @@
       }
     },
     {
+      "path": "pages/overview/overview",
+      "style": {
+        "disableScroll": false,
+        "navigationBarTitleText": "总览"
+      }
+    },
+    {
       "path": "pages/profile/profile",
       "style": {
         "disableScroll": false,
@@ -48,6 +55,12 @@
         "text": "日程",
         "iconPath": "static/tab/schedule.png",
         "selectedIconPath": "static/tab/schedule-active.png"
+      },
+      {
+        "pagePath": "pages/overview/overview",
+        "text": "总览",
+        "iconPath": "static/tab/overview.png",
+        "selectedIconPath": "static/tab/overview-active.png"
       },
       {
         "pagePath": "pages/profile/profile",
