@@ -84,13 +84,13 @@ onLoad((options) => {
   const id = options?.id;
   if (typeof id === "string" && id) {
     planId.value = id;
-    plan.value = getScheduleById(id) ?? null;
+    plan.value = getScheduleById(id) || null;
   }
 });
 
 onShow(() => {
   if (planId.value) {
-    plan.value = getScheduleById(planId.value) ?? null;
+    plan.value = getScheduleById(planId.value) || null;
   }
 });
 
@@ -231,17 +231,17 @@ function onEdit() {
 .action-btn {
   height: 96rpx;
   border-radius: 48rpx;
-  background: #ffffff;
-  border: 1rpx solid #10ad61;
+  background: #10ad61;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(16, 173, 97, 0.28);
 }
 
 .action-text {
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: 600;
-  color: #10ad61;
+  color: #ffffff;
 }
 
 .empty-page {

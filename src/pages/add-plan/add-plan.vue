@@ -198,10 +198,12 @@ function loadPlanForEdit(id: string) {
     startTime.value = item.time;
     lastStartTime.value = item.time;
   }
-  location.value = item.location ?? "";
-  peopleCount.value = item.peopleCount ?? 1;
-  syncPeopleInput();
-  wechatNotify.value = item.wechatNotify ?? true;
+      location.value = item.location != null ? item.location : "";
+      peopleCount.value =
+        item.peopleCount != null ? item.peopleCount : 1;
+      syncPeopleInput();
+      wechatNotify.value =
+        item.wechatNotify != null ? item.wechatNotify : true;
   uni.setNavigationBarTitle({ title: "编辑计划" });
 }
 
@@ -333,15 +335,18 @@ function onSubmit() {
 
 <style scoped>
 .add-page {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  padding-bottom: calc(128rpx + env(safe-area-inset-bottom));
   background: #f7f8fa;
 }
 
+/* 微信小程序 scroll-view 必须显式高度，flex+height:0 在真机会塌缩为白屏 */
 .add-scroll {
   flex: 1;
-  height: 0;
+  height: 100%;
 }
 
 .form-block {
