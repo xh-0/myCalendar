@@ -20,16 +20,47 @@ export interface ScheduleItem {
 }
 
 export const PLAN_TYPES = [
-  { label: '约拍', icon: '📷' },
-  { label: '订婚', icon: '💍' },
-  { label: '结婚', icon: '💒' },
-  { label: '写真', icon: '✨' },
-  { label: '闺蜜照', icon: '👯' },
-  { label: '亲子', icon: '👶' },
-  { label: '毕业照', icon: '🎓' },
-  { label: '商业拍摄', icon: '🏢' },
-  { label: '其他', icon: '📌' },
+  { label: '约拍', icon: '📷', color: '#3B82F6', colorLight: '#EFF6FF' },
+  { label: '订婚', icon: '💍', color: '#EC4899', colorLight: '#FDF2F8' },
+  { label: '结婚', icon: '💒', color: '#DC2626', colorLight: '#FEF2F2' },
+  { label: '写真', icon: '✨', color: '#8B5CF6', colorLight: '#F5F3FF' },
+  { label: '闺蜜照', icon: '👯', color: '#F59E0B', colorLight: '#FFFBEB' },
+  { label: '亲子', icon: '👶', color: '#14B8A6', colorLight: '#F0FDFA' },
+  { label: '毕业照', icon: '🎓', color: '#6366F1', colorLight: '#EEF2FF' },
+  { label: '商业拍摄', icon: '🏢', color: '#64748B', colorLight: '#F8FAFC' },
+  { label: '其他', icon: '📌', color: '#9CA3AF', colorLight: '#F9FAFB' },
 ] as const
+
+export type PlanType = (typeof PLAN_TYPES)[number]
+
+const DEFAULT_PLAN_TYPE = PLAN_TYPES[PLAN_TYPES.length - 1]
+
+export function getPlanTypeByLabel(label: string): PlanType {
+  return PLAN_TYPES.find((t) => t.label === label) ?? DEFAULT_PLAN_TYPE
+}
+
+export function getCategoryColor(category: string): string {
+  return getPlanTypeByLabel(category).color
+}
+
+export function getCategoryColorLight(category: string): string {
+  return getPlanTypeByLabel(category).colorLight
+}
+
+/** 某日日程涉及的类型颜色（去重，最多 3 个，供日历格展示） */
+export function getScheduleColorsOnDate(dateKey: string): string[] {
+  const colors: string[] = []
+  const seen = new Set<string>()
+  for (const s of MOCK_SCHEDULES) {
+    if (s.date !== dateKey) continue
+    const color = getCategoryColor(s.category)
+    if (seen.has(color)) continue
+    seen.add(color)
+    colors.push(color)
+    if (colors.length >= 3) break
+  }
+  return colors
+}
 
 export const MOCK_SCHEDULES: ScheduleItem[] = [
   {

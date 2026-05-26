@@ -27,10 +27,20 @@
             }"
           >{{ cell.day }}</text>
           <view
-            v-if="hasSchedule(cell.dateKey)"
-            class="schedule-dot"
-            :class="{ 'schedule-dot--selected': isSelected(cell) }"
-          />
+            v-if="scheduleColors(cell.dateKey).length"
+            class="schedule-dots"
+          >
+            <view
+              v-for="(color, dotIndex) in scheduleColors(cell.dateKey)"
+              :key="dotIndex"
+              class="schedule-dot"
+              :class="{
+                'schedule-dot--selected': isSelected(cell),
+                'schedule-dot--other-month': !cell.isCurrentMonth,
+              }"
+              :style="{ background: color }"
+            />
+          </view>
         </view>
       </view>
     </view>
@@ -45,7 +55,11 @@ import {
   isDateSelected,
   type CalendarDay,
 } from '@/utils/calendar'
-import { hasPriorityOnDate, hasScheduleOnDate, scheduleVersion } from '@/mock/schedule'
+import {
+  getScheduleColorsOnDate,
+  hasPriorityOnDate,
+  scheduleVersion,
+} from '@/mock/schedule'
 
 const props = defineProps<{
   viewYear: number
@@ -63,10 +77,10 @@ const emit = defineEmits<{
 const weekLabels = getWeekLabels()
 const days = computed(() => buildCalendarGrid(props.viewYear, props.viewMonth))
 
-function hasSchedule(dateKey: string) {
+function scheduleColors(dateKey: string) {
   props.refreshKey
   scheduleVersion.value
-  return hasScheduleOnDate(dateKey)
+  return getScheduleColorsOnDate(dateKey)
 }
 
 function hasPriority(dateKey: string) {
@@ -159,20 +173,29 @@ function isSelected(cell: CalendarDay) {
   font-weight: 600;
 }
 
+.schedule-dots {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+  margin-top: 4rpx;
+  min-height: 8rpx;
+}
+
 .schedule-dot {
   width: 8rpx;
   height: 8rpx;
   border-radius: 50%;
-  background: #10ad61;
-  margin-top: 4rpx;
+  flex-shrink: 0;
 }
 
 .schedule-dot--selected {
-  background: #ffffff;
+  box-shadow: 0 0 0 1rpx rgba(255, 255, 255, 0.85);
 }
 
-.day-inner--other .schedule-dot {
-  background: #c8e6d4;
+.schedule-dot--other-month {
+  opacity: 0.45;
 }
 
 .calendar-grid--compact .week-cell {
@@ -199,10 +222,15 @@ function isSelected(cell: CalendarDay) {
   font-size: 28rpx;
 }
 
+.calendar-grid--compact .schedule-dots {
+  gap: 3rpx;
+  margin-top: 3rpx;
+  min-height: 7rpx;
+}
+
 .calendar-grid--compact .schedule-dot {
   width: 7rpx;
   height: 7rpx;
-  margin-top: 3rpx;
 }
 
 .calendar-grid--compact .priority-dot {

@@ -13,12 +13,24 @@
         :class="{ 'task-item--border': index < schedules.length - 1 }"
       >
         <view class="task-time-col">
-          <text class="task-time">{{ item.time }}</text>
-          <view class="task-status-dot" />
+          <text class="task-time" :style="{ color: categoryColor(item.category) }">
+            {{ item.time }}
+          </text>
+          <view
+            class="task-status-dot"
+            :style="{ background: categoryColor(item.category) }"
+          />
         </view>
         <view class="task-body">
           <text class="task-title">{{ item.title }}</text>
-          <text class="task-category">{{ item.category }} {{ item.categoryIcon }}</text>
+          <view
+            class="task-category-tag"
+            :style="categoryTagStyle(item.category)"
+          >
+            <text class="task-category-text">
+              {{ item.category }} {{ item.categoryIcon }}
+            </text>
+          </view>
         </view>
         <view class="task-more" @tap.stop="emit('more', item.id)">
           <text class="more-icon">···</text>
@@ -39,7 +51,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { formatDayHeader } from '@/utils/calendar'
-import type { ScheduleItem } from '@/mock/schedule'
+import {
+  getCategoryColor,
+  getCategoryColorLight,
+  type ScheduleItem,
+} from '@/mock/schedule'
+
+function categoryColor(category: string) {
+  return getCategoryColor(category)
+}
+
+function categoryTagStyle(category: string) {
+  return {
+    color: getCategoryColor(category),
+    background: getCategoryColorLight(category),
+  }
+}
 
 const props = defineProps<{
   dateKey: string
@@ -109,14 +136,12 @@ const dayHeader = computed(() => formatDayHeader(props.dateKey))
 .task-time {
   font-size: 28rpx;
   font-weight: 600;
-  color: #10ad61;
 }
 
 .task-status-dot {
   width: 10rpx;
   height: 10rpx;
   border-radius: 50%;
-  background: #10ad61;
   margin-left: 8rpx;
   margin-top: 2rpx;
 }
@@ -136,9 +161,16 @@ const dayHeader = computed(() => formatDayHeader(props.dateKey))
   margin-bottom: 8rpx;
 }
 
-.task-category {
-  font-size: 26rpx;
-  color: #999999;
+.task-category-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 14rpx;
+  border-radius: 8rpx;
+}
+
+.task-category-text {
+  font-size: 24rpx;
+  line-height: 1.3;
 }
 
 .task-more {
