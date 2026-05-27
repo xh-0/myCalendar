@@ -1,7 +1,11 @@
 <template>
   <view v-if="plan" class="detail-page">
-    <view class="hero-card">
-      <view v-if="plan.priority" class="priority-tag">
+    <view v-if="plan.cancelled" class="cancelled-banner">
+      <text class="cancelled-text">该拍摄已取消</text>
+    </view>
+
+    <view class="hero-card" :class="{ 'hero-card--muted': plan.cancelled }">
+      <view v-if="plan.priority && !plan.cancelled" class="priority-tag">
         <text class="priority-text">重要</text>
       </view>
       <text class="hero-title">{{ plan.title }}</text>
@@ -48,8 +52,40 @@
     </view>
 
     <view class="action-card">
-      <view class="action-btn" @tap="onEdit">
+      <view
+        v-if="plan.cancelled"
+        class="action-btn"
+        @tap="onRestore"
+      >
+        <text class="action-text">重新进行</text>
+      </view>
+
+      <view
+        v-if="!plan.cancelled"
+        class="action-btn"
+        @tap="onEdit"
+      >
         <text class="action-text">编辑计划</text>
+      </view>
+
+      <view v-if="!plan.cancelled" class="action-row">
+        <picker
+          class="action-picker"
+          mode="date"
+          :value="plan.date"
+          @change="onRescheduleChange"
+        >
+          <view class="action-btn action-btn--secondary">
+            <text class="action-text action-text--dark">改期</text>
+          </view>
+        </picker>
+        <view class="action-btn action-btn--warn" @tap="onCancelShoot">
+          <text class="action-text action-text--warn">取消拍摄</text>
+        </view>
+      </view>
+
+      <view class="delete-wrap">
+        <text class="delete-link" @tap="onDelete">删除计划</text>
       </view>
     </view>
   </view>
@@ -65,7 +101,14 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
-import { getScheduleById, type ScheduleItem } from "@/mock/schedule";
+import {
+  cancelSchedule,
+  deleteSchedule,
+  getScheduleById,
+  rescheduleSchedule,
+  restoreSchedule,
+  type ScheduleItem,
+} from "@/mock/schedule";
 import { formatWeekdayShort } from "@/utils/calendar";
 
 const plan = ref<ScheduleItem | null>(null);
@@ -80,18 +123,21 @@ const timeLabel = computed(() => {
   return plan.value.time === "全天" ? "全天" : plan.value.time;
 });
 
+function reloadPlan() {
+  if (!planId.value) return;
+  plan.value = getScheduleById(planId.value) || null;
+}
+
 onLoad((options) => {
   const id = options?.id;
   if (typeof id === "string" && id) {
     planId.value = id;
-    plan.value = getScheduleById(id) || null;
+    reloadPlan();
   }
 });
 
 onShow(() => {
-  if (planId.value) {
-    plan.value = getScheduleById(planId.value) || null;
-  }
+  reloadPlan();
 });
 
 function goBack() {
@@ -99,9 +145,82 @@ function goBack() {
 }
 
 function onEdit() {
-  if (!plan.value) return;
+  if (!plan.value || plan.value.cancelled) return;
   uni.navigateTo({
     url: `/pages/add-plan/add-plan?id=${plan.value.id}`,
+  });
+}
+
+function onRescheduleChange(e: { detail: { value: string } }) {
+  if (!plan.value || plan.value.cancelled) return;
+  const newDate = e.detail.value;
+  if (newDate === plan.value.date) return;
+
+  const updated = rescheduleSchedule(plan.value.id, newDate);
+  if (!updated) {
+    uni.showToast({ title: "改期失败", icon: "none" });
+    return;
+  }
+  plan.value = updated;
+  uni.showToast({ title: "已改期", icon: "success" });
+}
+
+function onCancelShoot() {
+  if (!plan.value || plan.value.cancelled) return;
+  uni.showModal({
+    title: "取消拍摄",
+    content: "取消后计划在列表中以灰色显示，可随时重新进行。确定取消？",
+    confirmColor: "#e6a23c",
+    success(res) {
+      if (!res.confirm || !plan.value) return;
+      const ok = cancelSchedule(plan.value.id);
+      if (!ok) {
+        uni.showToast({ title: "操作失败", icon: "none" });
+        return;
+      }
+      reloadPlan();
+      uni.showToast({ title: "已取消拍摄", icon: "none" });
+    },
+  });
+}
+
+function onRestore() {
+  if (!plan.value || !plan.value.cancelled) return;
+  uni.showModal({
+    title: "重新进行",
+    content: "恢复后计划将重新显示为正常状态，确定恢复？",
+    confirmColor: "#10ad61",
+    success(res) {
+      if (!res.confirm || !plan.value) return;
+      const updated = restoreSchedule(plan.value.id);
+      if (!updated) {
+        uni.showToast({ title: "恢复失败", icon: "none" });
+        return;
+      }
+      plan.value = updated;
+      uni.showToast({ title: "已恢复拍摄", icon: "success" });
+    },
+  });
+}
+
+function onDelete() {
+  if (!plan.value) return;
+  uni.showModal({
+    title: "删除计划",
+    content: "删除后无法恢复，确定删除？",
+    confirmColor: "#ee0a24",
+    success(res) {
+      if (!res.confirm || !planId.value) return;
+      const ok = deleteSchedule(planId.value);
+      if (!ok) {
+        uni.showToast({ title: "删除失败", icon: "none" });
+        return;
+      }
+      uni.showToast({ title: "已删除", icon: "success" });
+      setTimeout(() => {
+        uni.navigateBack();
+      }, 400);
+    },
   });
 }
 </script>
@@ -113,12 +232,30 @@ function onEdit() {
   background: #f7f8fa;
 }
 
+.cancelled-banner {
+  margin-bottom: 16rpx;
+  padding: 20rpx 28rpx;
+  background: #fff7e6;
+  border-radius: 16rpx;
+  border: 1rpx solid #ffe7ba;
+}
+
+.cancelled-text {
+  font-size: 28rpx;
+  color: #e6a23c;
+  font-weight: 500;
+}
+
 .hero-card {
   background: #ffffff;
   border-radius: 24rpx;
   padding: 40rpx 32rpx 36rpx;
   margin-bottom: 20rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
+}
+
+.hero-card--muted {
+  opacity: 0.72;
 }
 
 .priority-tag {
@@ -228,6 +365,22 @@ function onEdit() {
   margin-top: 8rpx;
 }
 
+.action-row {
+  display: flex;
+  flex-direction: row;
+  gap: 20rpx;
+  margin-top: 20rpx;
+}
+
+.action-picker {
+  flex: 1;
+}
+
+.action-row .action-btn {
+  flex: 1;
+  margin-top: 0;
+}
+
 .action-btn {
   height: 96rpx;
   border-radius: 48rpx;
@@ -238,10 +391,42 @@ function onEdit() {
   box-shadow: 0 8rpx 24rpx rgba(16, 173, 97, 0.28);
 }
 
+.action-btn--secondary {
+  background: #ffffff;
+  border: 1rpx solid #e8e8e8;
+  box-shadow: none;
+}
+
+.action-btn--warn {
+  background: #ffffff;
+  border: 1rpx solid #ffe7ba;
+  box-shadow: none;
+}
+
 .action-text {
   font-size: 34rpx;
   font-weight: 600;
   color: #ffffff;
+}
+
+.action-text--dark {
+  color: #1a1a1a;
+  font-size: 32rpx;
+}
+
+.action-text--warn {
+  color: #e6a23c;
+  font-size: 32rpx;
+}
+
+.delete-wrap {
+  margin-top: 40rpx;
+  text-align: center;
+}
+
+.delete-link {
+  font-size: 28rpx;
+  color: #ee0a24;
 }
 
 .empty-page {

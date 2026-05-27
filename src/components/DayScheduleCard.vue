@@ -10,24 +10,44 @@
         v-for="(item, index) in schedules"
         :key="item.id"
         class="task-item"
-        :class="{ 'task-item--border': index < schedules.length - 1 }"
+        :class="{
+          'task-item--border': index < schedules.length - 1,
+          'task-item--cancelled': item.cancelled,
+        }"
       >
         <view class="task-time-col">
-          <text class="task-time" :style="{ color: categoryColor(item.category) }">
+          <text
+            class="task-time"
+            :class="{ 'task-time--cancelled': item.cancelled }"
+            :style="item.cancelled ? undefined : { color: categoryColor(item.category) }"
+          >
             {{ item.time }}
           </text>
           <view
             class="task-status-dot"
-            :style="{ background: categoryColor(item.category) }"
+            :class="{ 'task-status-dot--cancelled': item.cancelled }"
+            :style="item.cancelled ? undefined : { background: categoryColor(item.category) }"
           />
         </view>
         <view class="task-body">
-          <text class="task-title">{{ item.title }}</text>
+          <view class="task-title-row">
+            <text
+              class="task-title"
+              :class="{ 'task-title--cancelled': item.cancelled }"
+            >
+              {{ item.title }}
+            </text>
+            <text v-if="item.cancelled" class="task-cancelled-tag">已取消</text>
+          </view>
           <view
             class="task-category-tag"
-            :style="categoryTagStyle(item.category)"
+            :class="{ 'task-category-tag--cancelled': item.cancelled }"
+            :style="item.cancelled ? undefined : categoryTagStyle(item.category)"
           >
-            <text class="task-category-text">
+            <text
+              class="task-category-text"
+              :class="{ 'task-category-text--cancelled': item.cancelled }"
+            >
               {{ item.category }} {{ item.categoryIcon }}
             </text>
           </view>
@@ -124,6 +144,10 @@ const dayHeader = computed(() => formatDayHeader(props.dateKey))
   border-bottom: 1rpx solid #f0f0f0;
 }
 
+.task-item--cancelled {
+  opacity: 0.85;
+}
+
 .task-time-col {
   width: 100rpx;
   display: flex;
@@ -138,6 +162,11 @@ const dayHeader = computed(() => formatDayHeader(props.dateKey))
   font-weight: 600;
 }
 
+.task-time--cancelled {
+  color: #b8b8b8;
+  text-decoration: line-through;
+}
+
 .task-status-dot {
   width: 10rpx;
   height: 10rpx;
@@ -146,19 +175,44 @@ const dayHeader = computed(() => formatDayHeader(props.dateKey))
   margin-top: 2rpx;
 }
 
+.task-status-dot--cancelled {
+  background: #d0d0d0;
+}
+
 .task-body {
   flex: 1;
   min-width: 0;
   padding-right: 16rpx;
 }
 
+.task-title-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
+}
+
 .task-title {
-  display: block;
   font-size: 30rpx;
   font-weight: 600;
   color: #1a1a1a;
   line-height: 1.4;
-  margin-bottom: 8rpx;
+}
+
+.task-title--cancelled {
+  color: #b8b8b8;
+  text-decoration: line-through;
+}
+
+.task-cancelled-tag {
+  font-size: 22rpx;
+  color: #c0c0c0;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  background: #f3f3f3;
+  flex-shrink: 0;
 }
 
 .task-category-tag {
@@ -168,9 +222,18 @@ const dayHeader = computed(() => formatDayHeader(props.dateKey))
   border-radius: 8rpx;
 }
 
+.task-category-tag--cancelled {
+  background: #f3f3f3;
+}
+
 .task-category-text {
   font-size: 24rpx;
   line-height: 1.3;
+}
+
+.task-category-text--cancelled {
+  color: #c0c0c0;
+  text-decoration: line-through;
 }
 
 .task-more {

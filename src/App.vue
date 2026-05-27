@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { onLaunch, onShow, onHide } from "@dcloudio/uni-app";
+import { initSchedules } from "@/mock/schedule";
 
 onLaunch(() => {
-  // console.log('App Launch')
+  initSchedules();
 });
 onShow(() => {
   // console.log('App Show')

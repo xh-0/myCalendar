@@ -1,22 +1,17 @@
 import { ref } from 'vue'
+import {
+  loadSchedulesFromStorage,
+  saveSchedulesToStorage,
+  saveSchedulesToStorageAsync,
+} from '@/utils/schedule-storage'
+import type { ScheduleItem } from '@/types/schedule'
+
+export type { ScheduleItem } from '@/types/schedule'
 
 export const scheduleVersion = ref(0)
 
 function bumpScheduleVersion() {
   scheduleVersion.value += 1
-}
-
-export interface ScheduleItem {
-  id: string
-  date: string
-  time: string
-  title: string
-  category: string
-  categoryIcon: string
-  location?: string
-  peopleCount?: number
-  wechatNotify?: boolean
-  priority?: boolean
 }
 
 export const PLAN_TYPES = [
@@ -35,34 +30,8 @@ export type PlanType = (typeof PLAN_TYPES)[number]
 
 const DEFAULT_PLAN_TYPE = PLAN_TYPES[PLAN_TYPES.length - 1]
 
-export function getPlanTypeByLabel(label: string): PlanType {
-  return PLAN_TYPES.find((t) => t.label === label) ?? DEFAULT_PLAN_TYPE
-}
-
-export function getCategoryColor(category: string): string {
-  return getPlanTypeByLabel(category).color
-}
-
-export function getCategoryColorLight(category: string): string {
-  return getPlanTypeByLabel(category).colorLight
-}
-
-/** 某日日程涉及的类型颜色（去重，最多 3 个，供日历格展示） */
-export function getScheduleColorsOnDate(dateKey: string): string[] {
-  const colors: string[] = []
-  const seen = new Set<string>()
-  for (const s of MOCK_SCHEDULES) {
-    if (s.date !== dateKey) continue
-    const color = getCategoryColor(s.category)
-    if (seen.has(color)) continue
-    seen.add(color)
-    colors.push(color)
-    if (colors.length >= 3) break
-  }
-  return colors
-}
-
-export const MOCK_SCHEDULES: ScheduleItem[] = [
+/** 首次安装或无本地数据时的示例日程 */
+const SEED_SCHEDULES: ScheduleItem[] = [
   {
     id: '1',
     date: '2026-05-01',
@@ -115,7 +84,6 @@ export const MOCK_SCHEDULES: ScheduleItem[] = [
     location: '香格里拉酒店宴会厅',
     peopleCount: 8,
     wechatNotify: true,
-    priority: true,
   },
   {
     id: '6',
@@ -137,7 +105,6 @@ export const MOCK_SCHEDULES: ScheduleItem[] = [
     location: '郊野庄园婚礼草坪',
     peopleCount: 12,
     wechatNotify: true,
-    priority: true,
   },
   {
     id: '8',
@@ -305,6 +272,69 @@ export const MOCK_SCHEDULES: ScheduleItem[] = [
   },
 ]
 
+let schedules: ScheduleItem[] = []
+let initialized = false
+
+function isActiveSchedule(item: ScheduleItem): boolean {
+  return !item.cancelled
+}
+
+function persist(): void {
+  saveSchedulesToStorage(schedules)
+  bumpScheduleVersion()
+}
+
+async function persistAsync(): Promise<void> {
+  await saveSchedulesToStorageAsync(schedules)
+  bumpScheduleVersion()
+}
+
+/** 应用启动时从本地加载；无数据则写入示例日程 */
+export function initSchedules(): void {
+  if (initialized) return
+  const stored = loadSchedulesFromStorage()
+  if (stored && stored.length > 0) {
+    schedules = stored
+  } else {
+    schedules = SEED_SCHEDULES.map((s) => ({ ...s }))
+    saveSchedulesToStorage(schedules)
+  }
+  initialized = true
+  bumpScheduleVersion()
+}
+
+function ensureInit(): void {
+  if (!initialized) initSchedules()
+}
+
+export function getPlanTypeByLabel(label: string): PlanType {
+  return PLAN_TYPES.find((t) => t.label === label) ?? DEFAULT_PLAN_TYPE
+}
+
+export function getCategoryColor(category: string): string {
+  return getPlanTypeByLabel(category).color
+}
+
+export function getCategoryColorLight(category: string): string {
+  return getPlanTypeByLabel(category).colorLight
+}
+
+/** 某日日程涉及的类型颜色（去重，最多 3 个，供日历格展示） */
+export function getScheduleColorsOnDate(dateKey: string): string[] {
+  ensureInit()
+  const colors: string[] = []
+  const seen = new Set<string>()
+  for (const s of schedules) {
+    if (s.date !== dateKey || !isActiveSchedule(s)) continue
+    const color = getCategoryColor(s.category)
+    if (seen.has(color)) continue
+    seen.add(color)
+    colors.push(color)
+    if (colors.length >= 3) break
+  }
+  return colors
+}
+
 export function formatDateKey(year: number, month: number, day: number): string {
   const m = String(month + 1).padStart(2, '0')
   const d = String(day).padStart(2, '0')
@@ -312,39 +342,61 @@ export function formatDateKey(year: number, month: number, day: number): string 
 }
 
 export function getSchedulesByDate(dateKey: string): ScheduleItem[] {
-  return MOCK_SCHEDULES.filter((s) => s.date === dateKey).sort((a, b) =>
-    a.time.localeCompare(b.time),
-  )
+  ensureInit()
+  return schedules
+    .filter((s) => s.date === dateKey)
+    .sort((a, b) => {
+      const aCancelled = a.cancelled ? 1 : 0
+      const bCancelled = b.cancelled ? 1 : 0
+      if (aCancelled !== bCancelled) return aCancelled - bCancelled
+      return a.time.localeCompare(b.time)
+    })
 }
 
 export function getScheduleById(id: string): ScheduleItem | undefined {
-  return MOCK_SCHEDULES.find((s) => s.id === id)
+  ensureInit()
+  return schedules.find((s) => s.id === id)
 }
 
 export function hasScheduleOnDate(dateKey: string): boolean {
-  return MOCK_SCHEDULES.some((s) => s.date === dateKey)
+  ensureInit()
+  return schedules.some((s) => s.date === dateKey && isActiveSchedule(s))
 }
 
 export function hasPriorityOnDate(dateKey: string): boolean {
-  return MOCK_SCHEDULES.some((s) => s.date === dateKey && s.priority)
+  ensureInit()
+  return schedules.some(
+    (s) => s.date === dateKey && s.priority && isActiveSchedule(s),
+  )
 }
 
 export function getDatesWithSchedulesInMonth(year: number, month: number): Set<string> {
+  ensureInit()
   const prefix = `${year}-${String(month + 1).padStart(2, '0')}-`
   const set = new Set<string>()
-  MOCK_SCHEDULES.forEach((s) => {
-    if (s.date.startsWith(prefix)) set.add(s.date)
+  schedules.forEach((s) => {
+    if (s.date.startsWith(prefix) && isActiveSchedule(s)) set.add(s.date)
   })
   return set
 }
 
-export function addSchedule(
-  item: Omit<ScheduleItem, 'id'>,
-): ScheduleItem {
-  const maxNum = MOCK_SCHEDULES.reduce((max, s) => Math.max(max, Number(s.id) || 0), 0)
+export function addSchedule(item: Omit<ScheduleItem, 'id'>): ScheduleItem {
+  ensureInit()
+  const maxNum = schedules.reduce((max, s) => Math.max(max, Number(s.id) || 0), 0)
   const newItem: ScheduleItem = { ...item, id: String(maxNum + 1) }
-  MOCK_SCHEDULES.push(newItem)
-  bumpScheduleVersion()
+  schedules.push(newItem)
+  persist()
+  return newItem
+}
+
+export async function addScheduleAsync(
+  item: Omit<ScheduleItem, 'id'>,
+): Promise<ScheduleItem> {
+  ensureInit()
+  const maxNum = schedules.reduce((max, s) => Math.max(max, Number(s.id) || 0), 0)
+  const newItem: ScheduleItem = { ...item, id: String(maxNum + 1) }
+  schedules.push(newItem)
+  await persistAsync()
   return newItem
 }
 
@@ -352,10 +404,75 @@ export function updateSchedule(
   id: string,
   item: Omit<ScheduleItem, 'id'>,
 ): ScheduleItem | undefined {
-  const index = MOCK_SCHEDULES.findIndex((s) => s.id === id)
+  ensureInit()
+  const index = schedules.findIndex((s) => s.id === id)
   if (index === -1) return undefined
-  const updated: ScheduleItem = { ...MOCK_SCHEDULES[index], ...item, id }
-  MOCK_SCHEDULES[index] = updated
-  bumpScheduleVersion()
+  const updated: ScheduleItem = {
+    ...schedules[index],
+    ...item,
+    id,
+    cancelled: schedules[index].cancelled,
+  }
+  schedules[index] = updated
+  persist()
   return updated
+}
+
+export async function updateScheduleAsync(
+  id: string,
+  item: Omit<ScheduleItem, 'id'>,
+): Promise<ScheduleItem | undefined> {
+  ensureInit()
+  const index = schedules.findIndex((s) => s.id === id)
+  if (index === -1) return undefined
+  const updated: ScheduleItem = {
+    ...schedules[index],
+    ...item,
+    id,
+    cancelled: schedules[index].cancelled,
+  }
+  schedules[index] = updated
+  await persistAsync()
+  return updated
+}
+
+export function rescheduleSchedule(
+  id: string,
+  newDate: string,
+): ScheduleItem | undefined {
+  ensureInit()
+  const index = schedules.findIndex((s) => s.id === id)
+  if (index === -1) return undefined
+  schedules[index] = { ...schedules[index], date: newDate }
+  persist()
+  return schedules[index]
+}
+
+export function cancelSchedule(id: string): boolean {
+  ensureInit()
+  const index = schedules.findIndex((s) => s.id === id)
+  if (index === -1) return false
+  schedules[index] = { ...schedules[index], cancelled: true }
+  persist()
+  return true
+}
+
+/** 恢复已取消的拍摄计划 */
+export function restoreSchedule(id: string): ScheduleItem | undefined {
+  ensureInit()
+  const index = schedules.findIndex((s) => s.id === id)
+  if (index === -1) return undefined
+  if (!schedules[index].cancelled) return schedules[index]
+  schedules[index] = { ...schedules[index], cancelled: false }
+  persist()
+  return schedules[index]
+}
+
+export function deleteSchedule(id: string): boolean {
+  ensureInit()
+  const index = schedules.findIndex((s) => s.id === id)
+  if (index === -1) return false
+  schedules.splice(index, 1)
+  persist()
+  return true
 }

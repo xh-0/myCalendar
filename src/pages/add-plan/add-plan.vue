@@ -145,10 +145,10 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import dayjs from "dayjs";
 import {
-  addSchedule,
+  addScheduleAsync,
   getScheduleById,
   PLAN_TYPES,
-  updateSchedule,
+  updateScheduleAsync,
 } from "@/mock/schedule";
 import { formatWeekdayShort } from "@/utils/calendar";
 
@@ -290,7 +290,7 @@ function onPickLocation() {
   uni.showToast({ title: "地图选点即将上线", icon: "none" });
 }
 
-function onSubmit() {
+async function onSubmit() {
   const trimmed = title.value.trim();
   if (!trimmed) {
     uni.showToast({ title: "请填写计划标题", icon: "none" });
@@ -311,20 +311,24 @@ function onSubmit() {
     wechatNotify: wechatNotify.value,
   };
 
-  if (editId.value) {
-    const updated = updateSchedule(editId.value, payload);
-    if (!updated) {
-      uni.showToast({ title: "保存失败", icon: "none" });
-      return;
-    }
-    uni.showToast({ title: "已保存", icon: "success" });
-  } else {
-    addSchedule(payload);
-    if (wechatNotify.value) {
-      uni.showToast({ title: "已保存，订阅提醒即将上线", icon: "none" });
+  try {
+    if (editId.value) {
+      const updated = await updateScheduleAsync(editId.value, payload);
+      if (!updated) {
+        uni.showToast({ title: "保存失败", icon: "none" });
+        return;
+      }
+      uni.showToast({ title: "已保存", icon: "success" });
     } else {
-      uni.showToast({ title: "计划已发布", icon: "success" });
+      await addScheduleAsync(payload);
+      if (wechatNotify.value) {
+        uni.showToast({ title: "已保存，订阅提醒即将上线", icon: "none" });
+      } else {
+        uni.showToast({ title: "计划已发布", icon: "success" });
+      }
     }
+  } catch {
+    return;
   }
 
   setTimeout(() => {
