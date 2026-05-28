@@ -1,5 +1,9 @@
 <template>
   <view class="page-body">
+    <view class="search-entry" @tap="goSearch">
+      <text class="search-entry-icon">🔍</text>
+      <text class="search-entry-placeholder">搜索标题、地点、类型…</text>
+    </view>
     <MonthCalendar
       :year="viewYear"
       :month="viewMonth"
@@ -98,6 +102,12 @@ function onGoToday() {
   selectedDate.value = today.format("YYYY-MM-DD");
 }
 
+function goSearch() {
+  uni.navigateTo({
+    url: "/pages/search/search?focus=1",
+  });
+}
+
 function onAddPlan() {
   uni.navigateTo({
     url: `/pages/add-plan/add-plan?date=${selectedDate.value}`,
@@ -114,5 +124,28 @@ function onTaskMore(id: string) {
 <style scoped>
 .page-body {
   padding: 0 24rpx 32rpx;
+}
+
+.search-entry {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 72rpx;
+  margin: 8rpx 0 16rpx;
+  padding: 0 24rpx;
+  background: #ffffff;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+.search-entry-icon {
+  font-size: 30rpx;
+  margin-right: 12rpx;
+  line-height: 1;
+}
+
+.search-entry-placeholder {
+  font-size: 28rpx;
+  color: #cccccc;
 }
 </style>

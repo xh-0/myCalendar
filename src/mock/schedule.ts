@@ -329,6 +329,21 @@ export function getScheduleById(id: string): ScheduleItem | undefined {
   return schedules.find((s) => s.id === id)
 }
 
+/** 全部日程（按日期倒序，同日未取消优先、再按时间） */
+export function getAllSchedules(): ScheduleItem[] {
+  ensureInit()
+  return schedules
+    .slice()
+    .sort((a, b) => {
+      const dateCmp = b.date.localeCompare(a.date)
+      if (dateCmp !== 0) return dateCmp
+      const aCancelled = a.cancelled ? 1 : 0
+      const bCancelled = b.cancelled ? 1 : 0
+      if (aCancelled !== bCancelled) return aCancelled - bCancelled
+      return a.time.localeCompare(b.time)
+    })
+}
+
 export function hasScheduleOnDate(dateKey: string): boolean {
   ensureInit()
   return schedules.some((s) => s.date === dateKey && isActiveSchedule(s))

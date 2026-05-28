@@ -8,6 +8,10 @@
   </view>
 
   <view class="menu-list">
+    <view class="menu-item" @tap="goSearch">
+      <text class="menu-label">搜索计划</text>
+      <text class="menu-arrow">›</text>
+    </view>
     <view class="menu-item" @tap="showTip('账号设置')">
       <text class="menu-label">账号设置</text>
       <text class="menu-arrow">›</text>
@@ -24,6 +28,10 @@
 </template>
 
 <script setup lang="ts">
+function goSearch() {
+  uni.navigateTo({ url: "/pages/search/search" });
+}
+
 function showTip(name: string) {
   uni.showToast({ title: `${name}开发中`, icon: "none" });
 }
