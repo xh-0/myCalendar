@@ -5,7 +5,7 @@
       'search-row--border': showBorder,
       'search-row--cancelled': item.cancelled,
     }"
-    @tap="emit('tap', item.id)"
+    @tap="emit('select', item.id)"
   >
     <view class="search-row-time-col">
       <text v-if="showDate" class="search-row-date">{{ item.date.slice(5) }}</text>
@@ -50,7 +50,6 @@
         </text>
       </view>
     </view>
-    <text class="search-row-chevron">›</text>
   </view>
 </template>
 
@@ -68,7 +67,7 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  tap: [id: string]
+  select: [id: string]
 }>()
 
 function categoryColor(category: string) {
@@ -88,6 +87,9 @@ function categoryTagStyle(category: string) {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
   padding: 24rpx 0;
 }
 
@@ -100,7 +102,7 @@ function categoryTagStyle(category: string) {
 }
 
 .search-row-time-col {
-  width: 108rpx;
+  width: 96rpx;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -139,23 +141,29 @@ function categoryTagStyle(category: string) {
 .search-row-body {
   flex: 1;
   min-width: 0;
-  padding-right: 8rpx;
+  overflow: hidden;
 }
 
 .search-row-title-row {
   display: flex;
   flex-direction: row;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10rpx;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
   margin-bottom: 8rpx;
 }
 
 .search-row-title {
+  flex: 1;
+  min-width: 0;
   font-size: 30rpx;
   font-weight: 600;
   color: #1a1a1a;
   line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .search-row-title--cancelled {
@@ -164,6 +172,8 @@ function categoryTagStyle(category: string) {
 }
 
 .search-row-priority {
+  flex-shrink: 0;
+  margin-left: 10rpx;
   font-size: 22rpx;
   color: #10ad61;
   padding: 2rpx 10rpx;
@@ -172,6 +182,8 @@ function categoryTagStyle(category: string) {
 }
 
 .search-row-cancelled {
+  flex-shrink: 0;
+  margin-left: 10rpx;
   font-size: 22rpx;
   color: #c0c0c0;
   padding: 2rpx 10rpx;
@@ -181,17 +193,23 @@ function categoryTagStyle(category: string) {
 
 .search-row-meta {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12rpx;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8rpx;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .search-row-category {
+  max-width: 100%;
   font-size: 24rpx;
   padding: 4rpx 14rpx;
   border-radius: 8rpx;
   line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .search-row-category--cancelled {
@@ -201,10 +219,12 @@ function categoryTagStyle(category: string) {
 }
 
 .search-row-location {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   font-size: 24rpx;
   color: #999999;
-  flex: 1;
-  min-width: 0;
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -213,13 +233,5 @@ function categoryTagStyle(category: string) {
 .search-row-location--cancelled {
   color: #c0c0c0;
   text-decoration: line-through;
-}
-
-.search-row-chevron {
-  font-size: 36rpx;
-  color: #cccccc;
-  line-height: 1;
-  padding-top: 8rpx;
-  flex-shrink: 0;
 }
 </style>

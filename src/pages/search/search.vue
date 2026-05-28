@@ -52,17 +52,33 @@
       </view>
 
       <view class="date-row">
-        <picker mode="date" :value="filters.dateFrom || todayKey" @change="onDateFromChange">
-          <view class="date-pill" :class="{ 'date-pill--active': filters.dateFrom }">
+        <picker
+          mode="date"
+          :value="filters.dateFrom || todayKey"
+          @change="onDateFromChange"
+        >
+          <view
+            class="date-pill"
+            :class="{ 'date-pill--active': filters.dateFrom }"
+          >
             <text class="date-pill-label">开始</text>
-            <text class="date-pill-value">{{ filters.dateFrom || '不限' }}</text>
+            <text class="date-pill-value">{{
+              filters.dateFrom || "不限"
+            }}</text>
           </view>
         </picker>
         <text class="date-sep">至</text>
-        <picker mode="date" :value="filters.dateTo || todayKey" @change="onDateToChange">
-          <view class="date-pill" :class="{ 'date-pill--active': filters.dateTo }">
+        <picker
+          mode="date"
+          :value="filters.dateTo || todayKey"
+          @change="onDateToChange"
+        >
+          <view
+            class="date-pill"
+            :class="{ 'date-pill--active': filters.dateTo }"
+          >
             <text class="date-pill-label">结束</text>
-            <text class="date-pill-value">{{ filters.dateTo || '不限' }}</text>
+            <text class="date-pill-value">{{ filters.dateTo || "不限" }}</text>
           </view>
         </picker>
         <view
@@ -96,7 +112,7 @@
               :key="item.id"
               :item="item"
               :show-border="index < group.items.length - 1"
-              @tap="onOpenDetail"
+              @select="onOpenDetail"
             />
           </view>
         </view>
@@ -104,10 +120,14 @@
 
       <view v-else class="empty-wrap">
         <text class="empty-title">
-          {{ hasFilters ? '没有符合条件的计划' : '暂无计划' }}
+          {{ hasFilters ? "没有符合条件的计划" : "暂无计划" }}
         </text>
         <text class="empty-desc">
-          {{ hasFilters ? '试试调整关键词或筛选条件' : '在日程页添加你的第一场拍摄吧' }}
+          {{
+            hasFilters
+              ? "试试调整关键词或筛选条件"
+              : "在日程页添加你的第一场拍摄吧"
+          }}
         </text>
       </view>
     </scroll-view>
@@ -115,12 +135,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import dayjs from 'dayjs'
-import ScheduleSearchRow from '@/components/ScheduleSearchRow.vue'
-import { useScheduleSync } from '@/composables/useScheduleSync'
-import { getAllSchedules, PLAN_TYPES, scheduleVersion } from '@/mock/schedule'
+import { computed, ref } from "vue";
+import { onLoad } from "@dcloudio/uni-app";
+import dayjs from "dayjs";
+import ScheduleSearchRow from "@/components/ScheduleSearchRow.vue";
+import { useScheduleSync } from "@/composables/useScheduleSync";
+import { getAllSchedules, PLAN_TYPES, scheduleVersion } from "@/mock/schedule";
 import {
   DEFAULT_SCHEDULE_SEARCH_FILTERS,
   filterSchedules,
@@ -128,93 +148,97 @@ import {
   hasActiveSearchFilters,
   type ScheduleSearchFilters,
   type ScheduleStatusFilter,
-} from '@/utils/schedule-search'
+} from "@/utils/schedule-search";
 
-const planTypes = PLAN_TYPES
+const planTypes = PLAN_TYPES;
 
 const statusOptions: { label: string; value: ScheduleStatusFilter }[] = [
-  { label: '全部', value: 'all' },
-  { label: '进行中', value: 'active' },
-  { label: '已取消', value: 'cancelled' },
-  { label: '重要', value: 'priority' },
-]
+  { label: "全部", value: "all" },
+  { label: "进行中", value: "active" },
+  { label: "已取消", value: "cancelled" },
+  { label: "重要", value: "priority" },
+];
 
-const todayKey = dayjs().format('YYYY-MM-DD')
-const filters = ref<ScheduleSearchFilters>({ ...DEFAULT_SCHEDULE_SEARCH_FILTERS })
-const inputFocus = ref(false)
-const pageRefreshKey = ref(0)
+const todayKey = dayjs().format("YYYY-MM-DD");
+const filters = ref<ScheduleSearchFilters>({
+  ...DEFAULT_SCHEDULE_SEARCH_FILTERS,
+});
+const inputFocus = ref(false);
+const pageRefreshKey = ref(0);
 
-const hasFilters = computed(() => hasActiveSearchFilters(filters.value))
+const hasFilters = computed(() => hasActiveSearchFilters(filters.value));
 
 const filteredResults = computed(() => {
-  pageRefreshKey.value
-  scheduleVersion.value
-  return filterSchedules(getAllSchedules(), filters.value)
-})
+  pageRefreshKey.value;
+  scheduleVersion.value;
+  return filterSchedules(getAllSchedules(), filters.value);
+});
 
-const groupedResults = computed(() => groupSchedulesByDate(filteredResults.value))
-const resultCount = computed(() => filteredResults.value.length)
+const groupedResults = computed(() =>
+  groupSchedulesByDate(filteredResults.value)
+);
+const resultCount = computed(() => filteredResults.value.length);
 
 useScheduleSync(() => {
-  pageRefreshKey.value += 1
-})
+  pageRefreshKey.value += 1;
+});
 
 onLoad((query) => {
-  if (query?.focus === '1') {
-    inputFocus.value = true
+  if (query?.focus === "1") {
+    inputFocus.value = true;
   }
-  if (query?.category && typeof query.category === 'string') {
-    filters.value.categories = [decodeURIComponent(query.category)]
+  if (query?.category && typeof query.category === "string") {
+    filters.value.categories = [decodeURIComponent(query.category)];
   }
-})
+});
 
 function isCategorySelected(label: string): boolean {
-  return filters.value.categories.includes(label)
+  return filters.value.categories.includes(label);
 }
 
 function selectCategory(label: string) {
   if (!label) {
-    filters.value.categories = []
-    return
+    filters.value.categories = [];
+    return;
   }
-  filters.value.categories = [label]
+  filters.value.categories = [label];
 }
 
 function onDateFromChange(e: { detail: { value: string } }) {
-  filters.value.dateFrom = e.detail.value
+  filters.value.dateFrom = e.detail.value;
   if (filters.value.dateTo && filters.value.dateFrom > filters.value.dateTo) {
-    filters.value.dateTo = filters.value.dateFrom
+    filters.value.dateTo = filters.value.dateFrom;
   }
 }
 
 function onDateToChange(e: { detail: { value: string } }) {
-  filters.value.dateTo = e.detail.value
+  filters.value.dateTo = e.detail.value;
   if (filters.value.dateFrom && filters.value.dateTo < filters.value.dateFrom) {
-    filters.value.dateFrom = filters.value.dateTo
+    filters.value.dateFrom = filters.value.dateTo;
   }
 }
 
 function clearKeyword() {
-  filters.value.keyword = ''
+  filters.value.keyword = "";
 }
 
 function clearDateRange() {
-  filters.value.dateFrom = ''
-  filters.value.dateTo = ''
+  filters.value.dateFrom = "";
+  filters.value.dateTo = "";
 }
 
 function resetFilters() {
-  filters.value = { ...DEFAULT_SCHEDULE_SEARCH_FILTERS }
+  filters.value = { ...DEFAULT_SCHEDULE_SEARCH_FILTERS };
 }
 
 function onInputConfirm() {
-  uni.hideKeyboard()
+  uni.hideKeyboard();
 }
 
 function onOpenDetail(id: string) {
   uni.navigateTo({
     url: `/pages/plan-detail/plan-detail?id=${id}`,
-  })
+  });
 }
 </script>
 
@@ -425,6 +449,8 @@ function onOpenDetail(id: string) {
 .result-scroll {
   flex: 1;
   min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
   padding: 0 24rpx calc(24rpx + env(safe-area-inset-bottom));
 }
 
@@ -445,9 +471,12 @@ function onOpenDetail(id: string) {
 }
 
 .group-card {
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
   background: #ffffff;
   border-radius: 24rpx;
-  padding: 8rpx 28rpx;
+  padding: 8rpx 24rpx;
   box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.04);
 }
 
