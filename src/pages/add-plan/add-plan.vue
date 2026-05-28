@@ -134,7 +134,9 @@
 
     <view class="footer">
       <view class="submit-btn" @tap="onSubmit">
-        <text class="submit-text">{{ isEditMode ? "保存修改" : "发布活动" }}</text>
+        <text class="submit-text">{{
+          isEditMode ? "保存修改" : "发布活动"
+        }}</text>
       </view>
     </view>
   </view>
@@ -162,8 +164,8 @@ const title = ref("");
 const typeIndex = ref(0);
 const formDate = ref(dayjs().format("YYYY-MM-DD"));
 const allDay = ref(false);
-const startTime = ref("11:00");
-const lastStartTime = ref("11:00");
+const startTime = ref("08:00");
+const lastStartTime = ref("08:00");
 const location = ref("");
 const peopleCount = ref(1);
 const peopleInput = ref("1");
@@ -193,17 +195,15 @@ function loadPlanForEdit(id: string) {
   allDay.value = item.time === "全天";
   if (allDay.value) {
     startTime.value = "00:00";
-    lastStartTime.value = "11:00";
+    lastStartTime.value = "08:00";
   } else {
     startTime.value = item.time;
     lastStartTime.value = item.time;
   }
-      location.value = item.location != null ? item.location : "";
-      peopleCount.value =
-        item.peopleCount != null ? item.peopleCount : 1;
-      syncPeopleInput();
-      wechatNotify.value =
-        item.wechatNotify != null ? item.wechatNotify : true;
+  location.value = item.location != null ? item.location : "";
+  peopleCount.value = item.peopleCount != null ? item.peopleCount : 1;
+  syncPeopleInput();
+  wechatNotify.value = item.wechatNotify != null ? item.wechatNotify : true;
   uni.setNavigationBarTitle({ title: "编辑计划" });
 }
 
