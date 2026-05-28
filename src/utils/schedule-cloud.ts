@@ -1,8 +1,8 @@
-import { SCHEDULES_COLLECTION } from '@/config/weixin-cloud'
+import {
+  CLOUD_PAGE_SIZE,
+  SCHEDULES_COLLECTION,
+} from '@/config/weixin-cloud'
 import type { ScheduleItem } from '@/types/schedule'
-
-/** 微信云数据库单次 get 默认最多 20 条，分页拉全量 */
-const PAGE_SIZE = 20
 
 type ScheduleDoc = ScheduleItem & { _id?: string; _openid?: string }
 
@@ -48,12 +48,13 @@ export async function fetchAllSchedulesFromCloud(): Promise<ScheduleItem[]> {
   let skip = 0
 
   while (true) {
-    const { data } = await collection().skip(skip).limit(PAGE_SIZE).get()
+    const { data } = await collection().skip(skip).limit(CLOUD_PAGE_SIZE).get()
     const page = data as unknown as ScheduleDoc[]
     if (page.length === 0) break
     allDocs.push(...page)
-    if (page.length < PAGE_SIZE) break
     skip += page.length
+    // 满页说明可能还有下一页；不足一页才是最后一页
+    if (page.length < CLOUD_PAGE_SIZE) break
   }
 
   docIdByScheduleId.clear()

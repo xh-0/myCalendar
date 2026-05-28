@@ -6,6 +6,7 @@ import {
 } from '@/utils/schedule-storage'
 import type { ScheduleItem } from '@/types/schedule'
 // #ifdef MP-WEIXIN
+import { CLOUD_PULL_COOLDOWN_MS } from '@/config/weixin-cloud'
 import {
   applyCloudScheduleChange,
   fetchAllSchedulesFromCloud,
@@ -45,6 +46,9 @@ let schedules: ScheduleItem[] = []
 let initialized = false
 let initPromise: Promise<void> | null = null
 let refreshPromise: Promise<void> | null = null
+let lastCloudPullAt = 0
+/** 本地有增删改后，下次进入页面需与云端合并一次（可绕过冷却） */
+let pendingCloudSync = false
 
 /** 更新内存中的日程并同步写入本地 storage */
 function applySchedules(items: ScheduleItem[]): void {
@@ -59,26 +63,39 @@ function isActiveSchedule(item: ScheduleItem): boolean {
 
 function cloudSync(change: ScheduleCloudChange): void {
   // #ifdef MP-WEIXIN
-  applyCloudScheduleChange(change).catch((e) => {
-    console.error('[schedule] cloud sync failed', e)
-  })
+  pendingCloudSync = true
+  applyCloudScheduleChange(change)
+    .catch((e) => {
+      console.error('[schedule] cloud sync failed', e)
+    })
+    .finally(() => {
+      pendingCloudSync = false
+    })
   // #endif
 }
 
 function persist(change: ScheduleCloudChange): void {
+  pendingCloudSync = true
   saveSchedulesToStorage(schedules)
   cloudSync(change)
   bumpScheduleVersion()
 }
 
 async function persistAsync(change: ScheduleCloudChange): Promise<void> {
+  pendingCloudSync = true
   await saveSchedulesToStorageAsync(schedules)
   // #ifdef MP-WEIXIN
   try {
     await applyCloudScheduleChange(change)
   } catch (e) {
     console.error('[schedule] cloud sync failed', e)
+    throw e
+  } finally {
+    pendingCloudSync = false
   }
+  // #endif
+  // #ifndef MP-WEIXIN
+  pendingCloudSync = false
   // #endif
   bumpScheduleVersion()
 }
@@ -92,14 +109,73 @@ export function initSchedules(): void {
 }
 
 // #ifdef MP-WEIXIN
-/** 从云数据库拉取并写入 storage（始终以云端结果覆盖本地） */
+function getLocalSchedulesSnapshot(): ScheduleItem[] {
+  if (schedules.length > 0) {
+    return schedules.map((s) => ({ ...s }))
+  }
+  return (loadSchedulesFromStorage() ?? []).map((s) => ({ ...s }))
+}
+
+/** 同 id 以云端为准，仅存在于本地的条目保留（防止未同步条目被冲掉） */
+function mergeSchedulesById(
+  localItems: ScheduleItem[],
+  cloudItems: ScheduleItem[],
+): ScheduleItem[] {
+  const map = new Map<string, ScheduleItem>()
+  for (const item of localItems) {
+    map.set(item.id, { ...item })
+  }
+  for (const item of cloudItems) {
+    map.set(item.id, { ...item })
+  }
+  return Array.from(map.values())
+}
+
+function shouldPullFromCloud(force: boolean): boolean {
+  if (force) return true
+  if (pendingCloudSync) return true
+  return Date.now() - lastCloudPullAt >= CLOUD_PULL_COOLDOWN_MS
+}
+
+/**
+ * 从云数据库拉取并合并/写入 storage。
+ * - 默认 merge：云端 + 本地并集，不丢本地未上传成功的条
+ * - cloudWins：下拉刷新时用云端覆盖（云端为空则保留本地）
+ */
 async function pullSchedulesFromCloud(
-  options: { fallbackLocal?: boolean } = {},
+  options: {
+    fallbackLocal?: boolean
+    force?: boolean
+    cloudWins?: boolean
+  } = {},
 ): Promise<void> {
-  const { fallbackLocal = true } = options
+  const { fallbackLocal = true, force = false, cloudWins = false } = options
+  if (!shouldPullFromCloud(force)) {
+    return
+  }
+  const localItems = getLocalSchedulesSnapshot()
   try {
     const cloudItems = await fetchAllSchedulesFromCloud()
-    applySchedules(cloudItems)
+    let next: ScheduleItem[]
+
+    if (cloudItems.length === 0 && localItems.length > 0) {
+      console.warn('[schedule] cloud empty, keep local', localItems.length)
+      if (force) {
+        uni.showToast({ title: '云端暂无可见数据，已保留本地', icon: 'none' })
+      }
+      next = localItems
+    } else if (cloudWins) {
+      next = cloudItems
+    } else {
+      next = mergeSchedulesById(localItems, cloudItems)
+    }
+
+    console.log(
+      `[schedule] pull merged local=${localItems.length} cloud=${cloudItems.length} => ${next.length}`,
+    )
+    applySchedules(next)
+    lastCloudPullAt = Date.now()
+    pendingCloudSync = false
   } catch (e) {
     console.error('[schedule] cloud pull failed', e)
     if (!fallbackLocal) {
@@ -120,7 +196,11 @@ export async function initSchedulesAsync(): Promise<void> {
   if (initialized) return
   initPromise = (async () => {
     // #ifdef MP-WEIXIN
-    await pullSchedulesFromCloud()
+    const stored = loadSchedulesFromStorage()
+    if (stored && stored.length > 0) {
+      schedules = stored.map((s) => ({ ...s }))
+    }
+    await pullSchedulesFromCloud({ force: true, cloudWins: false })
     initialized = true
     // #endif
     // #ifndef MP-WEIXIN
@@ -143,33 +223,44 @@ export async function whenSchedulesReady(): Promise<void> {
 
 // #ifdef MP-WEIXIN
 /**
- * 从云端刷新日程（进入小程序、切回前台、页面 onShow 时调用）。
+ * 从云端刷新（受冷却时间限制，避免 Tab 切换刷爆额度）。
+ * @param force 为 true 时忽略冷却（下拉刷新）
  */
-export async function refreshSchedulesFromCloud(): Promise<void> {
+export async function refreshSchedulesFromCloud(
+  options: { force?: boolean } = {},
+): Promise<void> {
   if (!initialized) {
     await initSchedulesAsync()
     return
   }
+  if (!shouldPullFromCloud(options.force ?? false)) {
+    return
+  }
   if (refreshPromise) return refreshPromise
-  refreshPromise = pullSchedulesFromCloud({ fallbackLocal: false }).finally(() => {
+  refreshPromise = pullSchedulesFromCloud({
+    fallbackLocal: false,
+    force: options.force ?? false,
+    cloudWins: options.force ?? false,
+  }).finally(() => {
     refreshPromise = null
   })
   return refreshPromise
 }
 // #endif
 
-/** 进入页面：先保证就绪，微信端再拉最新云数据 */
+/** 进入页面：仅保证本地/内存数据就绪，不自动拉云（省额度） */
 export async function syncSchedulesOnEnter(): Promise<void> {
   await whenSchedulesReady()
-  // #ifdef MP-WEIXIN
-  await refreshSchedulesFromCloud()
-  // #endif
 }
 
-/** 下拉刷新等场景：强制以云端为准 */
+/** 下拉刷新：以云端为准（云端为空时不覆盖本地） */
 export async function forceRefreshSchedulesFromCloud(): Promise<void> {
   // #ifdef MP-WEIXIN
-  await pullSchedulesFromCloud({ fallbackLocal: false })
+  await pullSchedulesFromCloud({
+    fallbackLocal: false,
+    force: true,
+    cloudWins: true,
+  })
   // #endif
 }
 
