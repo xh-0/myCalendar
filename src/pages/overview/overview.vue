@@ -20,7 +20,7 @@
       :schedules="daySchedules"
       @close="drawerVisible = false"
       @add="onAddPlan"
-      @more="onTaskMore"
+      @select="onTaskSelect"
     />
   </view>
 </template>
@@ -88,7 +88,7 @@ function onAddPlan() {
   })
 }
 
-function onTaskMore(id: string) {
+function onTaskSelect(id: string) {
   drawerVisible.value = false
   uni.navigateTo({
     url: `/pages/plan-detail/plan-detail?id=${id}`,

@@ -19,7 +19,7 @@
       :date-key="selectedDate"
       :schedules="daySchedules"
       @add="onAddPlan"
-      @more="onTaskMore"
+      @select="onTaskSelect"
     />
   </view>
 </template>
@@ -114,7 +114,7 @@ function onAddPlan() {
   });
 }
 
-function onTaskMore(id: string) {
+function onTaskSelect(id: string) {
   uni.navigateTo({
     url: `/pages/plan-detail/plan-detail?id=${id}`,
   });

@@ -10,7 +10,7 @@
           :date-key="dateKey"
           :schedules="schedules"
           @add="emit('add')"
-          @more="emit('more', $event)"
+          @select="emit('select', $event)"
         />
       </view>
     </view>
@@ -31,7 +31,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
   add: []
-  more: [id: string]
+  select: [id: string]
 }>()
 
 const rendered = ref(false)

@@ -14,6 +14,7 @@
           'task-item--border': index < schedules.length - 1,
           'task-item--cancelled': item.cancelled,
         }"
+        @tap="emit('select', item.id)"
       >
         <view class="task-time-col">
           <text
@@ -51,9 +52,6 @@
               {{ item.category }} {{ item.categoryIcon }}
             </text>
           </view>
-        </view>
-        <view class="task-more" @tap.stop="emit('more', item.id)">
-          <text class="more-icon">···</text>
         </view>
       </view>
     </view>
@@ -95,7 +93,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   add: []
-  more: [id: string]
+  select: [id: string]
 }>()
 
 const dayHeader = computed(() => formatDayHeader(props.dateKey))
@@ -138,6 +136,14 @@ const dayHeader = computed(() => formatDayHeader(props.dateKey))
   flex-direction: row;
   align-items: flex-start;
   padding: 24rpx 0;
+  margin: 0 -12rpx;
+  padding-left: 12rpx;
+  padding-right: 12rpx;
+  border-radius: 12rpx;
+}
+
+.task-item:active {
+  background: #f7f7f7;
 }
 
 .task-item--border {
@@ -182,7 +188,6 @@ const dayHeader = computed(() => formatDayHeader(props.dateKey))
 .task-body {
   flex: 1;
   min-width: 0;
-  padding-right: 16rpx;
 }
 
 .task-title-row {
@@ -234,22 +239,6 @@ const dayHeader = computed(() => formatDayHeader(props.dateKey))
 .task-category-text--cancelled {
   color: #c0c0c0;
   text-decoration: line-through;
-}
-
-.task-more {
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.more-icon {
-  font-size: 32rpx;
-  color: #cccccc;
-  letter-spacing: 2rpx;
-  line-height: 1;
 }
 
 .empty-tip {
