@@ -22,12 +22,16 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { onPullDownRefresh } from "@dcloudio/uni-app";
 import MonthCalendar from "@/components/MonthCalendar.vue";
 import DayScheduleCard from "@/components/DayScheduleCard.vue";
 import dayjs from "dayjs";
-
-import { getSchedulesByDate, scheduleVersion } from "@/mock/schedule";
+import { useScheduleSync } from "@/composables/useScheduleSync";
+import {
+  forceRefreshSchedulesFromCloud,
+  getSchedulesByDate,
+  scheduleVersion,
+} from "@/mock/schedule";
 import { parseDateKey } from "@/utils/calendar";
 
 const DEFAULT_DATE = dayjs().format("YYYY-MM-DD");
@@ -44,8 +48,17 @@ const daySchedules = computed(() => {
   return getSchedulesByDate(selectedDate.value);
 });
 
-onShow(() => {
+useScheduleSync(() => {
   pageRefreshKey.value += 1;
+});
+
+onPullDownRefresh(async () => {
+  try {
+    await forceRefreshSchedulesFromCloud();
+    pageRefreshKey.value += 1;
+  } finally {
+    uni.stopPullDownRefresh();
+  }
 });
 
 function onSelectDate(dateKey: string) {

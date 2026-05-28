@@ -4,7 +4,8 @@
       "path": "pages/index/index",
       "style": {
         "disableScroll": false,
-        "navigationBarTitleText": "日程"
+        "navigationBarTitleText": "日程",
+        "enablePullDownRefresh": true
       }
     },
     {

@@ -100,7 +100,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { onLoad, onShow } from "@dcloudio/uni-app";
+import { onLoad } from "@dcloudio/uni-app";
+import { useScheduleSync } from "@/composables/useScheduleSync";
 import {
   cancelSchedule,
   deleteSchedule,
@@ -136,7 +137,7 @@ onLoad((options) => {
   }
 });
 
-onShow(() => {
+useScheduleSync(() => {
   reloadPlan();
 });
 

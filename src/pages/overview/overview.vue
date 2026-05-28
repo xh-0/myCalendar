@@ -23,10 +23,10 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
 import dayjs from 'dayjs'
 import YearCalendar from '@/components/YearCalendar.vue'
 import ScheduleDrawer from '@/components/ScheduleDrawer.vue'
+import { useScheduleSync } from '@/composables/useScheduleSync'
 import { getSchedulesByDate, scheduleVersion } from '@/mock/schedule'
 import { parseDateKey } from '@/utils/calendar'
 
@@ -43,7 +43,7 @@ const daySchedules = computed(() => {
   return getSchedulesByDate(selectedDate.value)
 })
 
-onShow(() => {
+useScheduleSync(() => {
   pageRefreshKey.value += 1
 })
 

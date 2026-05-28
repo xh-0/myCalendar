@@ -1,10 +1,21 @@
-import { ref } from 'vue'
+﻿import { ref } from 'vue'
 import {
   loadSchedulesFromStorage,
   saveSchedulesToStorage,
   saveSchedulesToStorageAsync,
 } from '@/utils/schedule-storage'
 import type { ScheduleItem } from '@/types/schedule'
+// #ifdef MP-WEIXIN
+import {
+  applyCloudScheduleChange,
+  fetchAllSchedulesFromCloud,
+} from '@/utils/schedule-cloud'
+// #endif
+
+/** 云端单条同步（微信端使用） */
+type ScheduleCloudChange =
+  | { type: 'upsert'; item: ScheduleItem }
+  | { type: 'remove'; id: string }
 
 export type { ScheduleItem } from '@/types/schedule'
 
@@ -30,281 +41,150 @@ export type PlanType = (typeof PLAN_TYPES)[number]
 
 const DEFAULT_PLAN_TYPE = PLAN_TYPES[PLAN_TYPES.length - 1]
 
-/** 首次安装或无本地数据时的示例日程 */
-const SEED_SCHEDULES: ScheduleItem[] = [
-  {
-    id: '1',
-    date: '2026-05-01',
-    time: '09:00',
-    title: '王女士户外写真',
-    category: '写真',
-    categoryIcon: '✨',
-    location: '滨江公园樱花大道',
-    peopleCount: 2,
-    wechatNotify: true,
-  },
-  {
-    id: '2',
-    date: '2026-05-03',
-    time: '14:00',
-    title: '情侣街拍约拍',
-    category: '约拍',
-    categoryIcon: '📷',
-    location: '老城区梧桐街',
-    peopleCount: 2,
-  },
-  {
-    id: '3',
-    date: '2026-05-06',
-    time: '10:30',
-    title: '张先生亲子外景',
-    category: '亲子',
-    categoryIcon: '👶',
-    location: '市植物园东门',
-    peopleCount: 4,
-  },
-  {
-    id: '4',
-    date: '2026-05-08',
-    time: '15:00',
-    title: '品牌lookbook拍摄',
-    category: '商业拍摄',
-    categoryIcon: '🏢',
-    location: '创意园3号棚',
-    peopleCount: 6,
-    wechatNotify: true,
-  },
-  {
-    id: '5',
-    date: '2026-05-10',
-    time: '08:00',
-    title: '李女士订婚仪式跟拍',
-    category: '订婚',
-    categoryIcon: '💍',
-    location: '香格里拉酒店宴会厅',
-    peopleCount: 8,
-    wechatNotify: true,
-  },
-  {
-    id: '6',
-    date: '2026-05-11',
-    time: '11:00',
-    title: '闺蜜下午茶写真',
-    category: '闺蜜照',
-    categoryIcon: '👯',
-    location: '西岸艺术区咖啡馆',
-    peopleCount: 3,
-  },
-  {
-    id: '7',
-    date: '2026-05-12',
-    time: '全天',
-    title: '陈氏婚礼全天跟拍',
-    category: '结婚',
-    categoryIcon: '💒',
-    location: '郊野庄园婚礼草坪',
-    peopleCount: 12,
-    wechatNotify: true,
-  },
-  {
-    id: '8',
-    date: '2026-05-13',
-    time: '16:00',
-    title: '选片沟通预约',
-    category: '其他',
-    categoryIcon: '📌',
-    location: '工作室展厅',
-    peopleCount: 2,
-  },
-  {
-    id: '9',
-    date: '2026-05-14',
-    time: '13:30',
-    title: '毕业季宿舍合影',
-    category: '毕业照',
-    categoryIcon: '🎓',
-    location: '大学城图书馆前广场',
-    peopleCount: 6,
-  },
-  {
-    id: '10',
-    date: '2026-05-15',
-    time: '18:00',
-    title: '夜景人像约拍',
-    category: '约拍',
-    categoryIcon: '📷',
-    location: '跨江大桥观景台',
-    peopleCount: 1,
-  },
-  {
-    id: '11',
-    date: '2026-05-17',
-    time: '09:00',
-    title: '百天宝宝上门拍摄',
-    category: '亲子',
-    categoryIcon: '👶',
-    location: '阳光花园小区',
-    peopleCount: 4,
-    wechatNotify: true,
-  },
-  {
-    id: '12',
-    date: '2026-05-18',
-    time: '14:00',
-    title: '订婚宴敬酒环节',
-    category: '订婚',
-    categoryIcon: '💍',
-    location: '锦江宾馆二层宴会厅',
-    peopleCount: 10,
-  },
-  {
-    id: '13',
-    date: '2026-05-20',
-    time: '10:00',
-    title: '企业形象照拍摄',
-    category: '商业拍摄',
-    categoryIcon: '🏢',
-    location: '科创大厦A座前台',
-    peopleCount: 5,
-  },
-  {
-    id: '14',
-    date: '2026-05-22',
-    time: '11:30',
-    title: '证件照+形象照套餐',
-    category: '写真',
-    categoryIcon: '✨',
-    location: '工作室影棚',
-    peopleCount: 1,
-  },
-  {
-    id: '15',
-    date: '2026-05-24',
-    time: '09:00',
-    title: '赵小姐订婚跟拍',
-    category: '订婚',
-    categoryIcon: '💍',
-    location: '湖畔度假酒店',
-    peopleCount: 6,
-    wechatNotify: true,
-  },
-  {
-    id: '16',
-    date: '2026-05-24',
-    time: '14:30',
-    title: '婚礼彩排记录',
-    category: '结婚',
-    categoryIcon: '💒',
-    location: '玫瑰庄园教堂',
-    peopleCount: 8,
-  },
-  {
-    id: '17',
-    date: '2026-05-24',
-    time: '19:30',
-    title: '夜景情侣约拍',
-    category: '约拍',
-    categoryIcon: '📷',
-    location: '摩天轮广场',
-    peopleCount: 2,
-  },
-  {
-    id: '18',
-    date: '2026-05-25',
-    time: '10:00',
-    title: '闺蜜海边旅拍',
-    category: '闺蜜照',
-    categoryIcon: '👯',
-    location: '黄金海岸沙滩',
-    peopleCount: 3,
-  },
-  {
-    id: '19',
-    date: '2026-05-27',
-    time: '16:30',
-    title: '婚礼精修交付沟通',
-    category: '结婚',
-    categoryIcon: '💒',
-    location: '工作室',
-    peopleCount: 2,
-  },
-  {
-    id: '20',
-    date: '2026-05-29',
-    time: '09:00',
-    title: '幼儿园毕业照',
-    category: '毕业照',
-    categoryIcon: '🎓',
-    location: '实验幼儿园操场',
-    peopleCount: 28,
-    wechatNotify: true,
-  },
-  {
-    id: '21',
-    date: '2026-05-31',
-    time: '17:00',
-    title: '月末档期整理',
-    category: '其他',
-    categoryIcon: '📌',
-    location: '工作室',
-    peopleCount: 1,
-  },
-  {
-    id: '22',
-    date: '2026-04-28',
-    time: '10:00',
-    title: '上月婚礼相册寄送',
-    category: '结婚',
-    categoryIcon: '💒',
-    location: '顺丰网点',
-    peopleCount: 1,
-  },
-  {
-    id: '23',
-    date: '2026-06-03',
-    time: '14:00',
-    title: '六月婚礼旺季洽谈',
-    category: '结婚',
-    categoryIcon: '💒',
-    location: '工作室会客室',
-    peopleCount: 2,
-    wechatNotify: true,
-  },
-]
-
 let schedules: ScheduleItem[] = []
 let initialized = false
+let initPromise: Promise<void> | null = null
+let refreshPromise: Promise<void> | null = null
+
+/** 更新内存中的日程并同步写入本地 storage */
+function applySchedules(items: ScheduleItem[]): void {
+  schedules = items.map((s) => ({ ...s }))
+  saveSchedulesToStorage(schedules)
+  bumpScheduleVersion()
+}
 
 function isActiveSchedule(item: ScheduleItem): boolean {
   return !item.cancelled
 }
 
-function persist(): void {
+function cloudSync(change: ScheduleCloudChange): void {
+  // #ifdef MP-WEIXIN
+  applyCloudScheduleChange(change).catch((e) => {
+    console.error('[schedule] cloud sync failed', e)
+  })
+  // #endif
+}
+
+function persist(change: ScheduleCloudChange): void {
   saveSchedulesToStorage(schedules)
+  cloudSync(change)
   bumpScheduleVersion()
 }
 
-async function persistAsync(): Promise<void> {
+async function persistAsync(change: ScheduleCloudChange): Promise<void> {
   await saveSchedulesToStorageAsync(schedules)
+  // #ifdef MP-WEIXIN
+  try {
+    await applyCloudScheduleChange(change)
+  } catch (e) {
+    console.error('[schedule] cloud sync failed', e)
+  }
+  // #endif
   bumpScheduleVersion()
 }
 
-/** 应用启动时从本地加载；无数据则写入示例日程 */
+/** 非微信端：仅从本地 storage 加载 */
 export function initSchedules(): void {
   if (initialized) return
   const stored = loadSchedulesFromStorage()
-  if (stored && stored.length > 0) {
-    schedules = stored
-  } else {
-    schedules = SEED_SCHEDULES.map((s) => ({ ...s }))
-    saveSchedulesToStorage(schedules)
-  }
+  applySchedules(stored ?? [])
   initialized = true
-  bumpScheduleVersion()
+}
+
+// #ifdef MP-WEIXIN
+/** 从云数据库拉取并写入 storage（始终以云端结果覆盖本地） */
+async function pullSchedulesFromCloud(
+  options: { fallbackLocal?: boolean } = {},
+): Promise<void> {
+  const { fallbackLocal = true } = options
+  try {
+    const cloudItems = await fetchAllSchedulesFromCloud()
+    applySchedules(cloudItems)
+  } catch (e) {
+    console.error('[schedule] cloud pull failed', e)
+    if (!fallbackLocal) {
+      uni.showToast({ title: '云端同步失败', icon: 'none' })
+      throw e
+    }
+    const stored = loadSchedulesFromStorage()
+    schedules = (stored ?? []).map((s) => ({ ...s }))
+    saveSchedulesToStorage(schedules)
+    bumpScheduleVersion()
+  }
+}
+// #endif
+
+/** 应用启动：微信端从云拉取，其它端读 storage */
+export async function initSchedulesAsync(): Promise<void> {
+  if (initPromise) return initPromise
+  if (initialized) return
+  initPromise = (async () => {
+    // #ifdef MP-WEIXIN
+    await pullSchedulesFromCloud()
+    initialized = true
+    // #endif
+    // #ifndef MP-WEIXIN
+    initSchedules()
+    // #endif
+  })().finally(() => {
+    initPromise = null
+  })
+  return initPromise
+}
+
+/**
+ * 等待日程就绪（首次为云拉取完成）。
+ * 页面/写操作前应 await，避免用到未同步的旧缓存。
+ */
+export async function whenSchedulesReady(): Promise<void> {
+  if (initialized) return
+  await initSchedulesAsync()
+}
+
+// #ifdef MP-WEIXIN
+/**
+ * 从云端刷新日程（进入小程序、切回前台、页面 onShow 时调用）。
+ */
+export async function refreshSchedulesFromCloud(): Promise<void> {
+  if (!initialized) {
+    await initSchedulesAsync()
+    return
+  }
+  if (refreshPromise) return refreshPromise
+  refreshPromise = pullSchedulesFromCloud({ fallbackLocal: false }).finally(() => {
+    refreshPromise = null
+  })
+  return refreshPromise
+}
+// #endif
+
+/** 进入页面：先保证就绪，微信端再拉最新云数据 */
+export async function syncSchedulesOnEnter(): Promise<void> {
+  await whenSchedulesReady()
+  // #ifdef MP-WEIXIN
+  await refreshSchedulesFromCloud()
+  // #endif
+}
+
+/** 下拉刷新等场景：强制以云端为准 */
+export async function forceRefreshSchedulesFromCloud(): Promise<void> {
+  // #ifdef MP-WEIXIN
+  await pullSchedulesFromCloud({ fallbackLocal: false })
+  // #endif
 }
 
 function ensureInit(): void {
-  if (!initialized) initSchedules()
+  if (initialized) return
+  // #ifdef MP-WEIXIN
+  const stored = loadSchedulesFromStorage()
+  if (stored && stored.length > 0) {
+    schedules = stored.map((s) => ({ ...s }))
+  }
+  return
+  // #endif
+  // #ifndef MP-WEIXIN
+  initSchedules()
+  // #endif
 }
 
 export function getPlanTypeByLabel(label: string): PlanType {
@@ -385,18 +265,19 @@ export function addSchedule(item: Omit<ScheduleItem, 'id'>): ScheduleItem {
   const maxNum = schedules.reduce((max, s) => Math.max(max, Number(s.id) || 0), 0)
   const newItem: ScheduleItem = { ...item, id: String(maxNum + 1) }
   schedules.push(newItem)
-  persist()
+  persist({ type: 'upsert', item: newItem })
   return newItem
 }
 
 export async function addScheduleAsync(
   item: Omit<ScheduleItem, 'id'>,
 ): Promise<ScheduleItem> {
+  await whenSchedulesReady()
   ensureInit()
   const maxNum = schedules.reduce((max, s) => Math.max(max, Number(s.id) || 0), 0)
   const newItem: ScheduleItem = { ...item, id: String(maxNum + 1) }
   schedules.push(newItem)
-  await persistAsync()
+  await persistAsync({ type: 'upsert', item: newItem })
   return newItem
 }
 
@@ -414,7 +295,7 @@ export function updateSchedule(
     cancelled: schedules[index].cancelled,
   }
   schedules[index] = updated
-  persist()
+  persist({ type: 'upsert', item: updated })
   return updated
 }
 
@@ -422,6 +303,7 @@ export async function updateScheduleAsync(
   id: string,
   item: Omit<ScheduleItem, 'id'>,
 ): Promise<ScheduleItem | undefined> {
+  await whenSchedulesReady()
   ensureInit()
   const index = schedules.findIndex((s) => s.id === id)
   if (index === -1) return undefined
@@ -432,7 +314,7 @@ export async function updateScheduleAsync(
     cancelled: schedules[index].cancelled,
   }
   schedules[index] = updated
-  await persistAsync()
+  await persistAsync({ type: 'upsert', item: updated })
   return updated
 }
 
@@ -443,17 +325,19 @@ export function rescheduleSchedule(
   ensureInit()
   const index = schedules.findIndex((s) => s.id === id)
   if (index === -1) return undefined
-  schedules[index] = { ...schedules[index], date: newDate }
-  persist()
-  return schedules[index]
+  const updated = { ...schedules[index], date: newDate }
+  schedules[index] = updated
+  persist({ type: 'upsert', item: updated })
+  return updated
 }
 
 export function cancelSchedule(id: string): boolean {
   ensureInit()
   const index = schedules.findIndex((s) => s.id === id)
   if (index === -1) return false
-  schedules[index] = { ...schedules[index], cancelled: true }
-  persist()
+  const updated = { ...schedules[index], cancelled: true }
+  schedules[index] = updated
+  persist({ type: 'upsert', item: updated })
   return true
 }
 
@@ -463,9 +347,10 @@ export function restoreSchedule(id: string): ScheduleItem | undefined {
   const index = schedules.findIndex((s) => s.id === id)
   if (index === -1) return undefined
   if (!schedules[index].cancelled) return schedules[index]
-  schedules[index] = { ...schedules[index], cancelled: false }
-  persist()
-  return schedules[index]
+  const updated = { ...schedules[index], cancelled: false }
+  schedules[index] = updated
+  persist({ type: 'upsert', item: updated })
+  return updated
 }
 
 export function deleteSchedule(id: string): boolean {
@@ -473,6 +358,6 @@ export function deleteSchedule(id: string): boolean {
   const index = schedules.findIndex((s) => s.id === id)
   if (index === -1) return false
   schedules.splice(index, 1)
-  persist()
+  persist({ type: 'remove', id })
   return true
 }

@@ -1,12 +1,24 @@
 <script setup lang="ts">
 import { onLaunch, onShow, onHide } from "@dcloudio/uni-app";
-import { initSchedules } from "@/mock/schedule";
+import { initSchedules, initSchedulesAsync } from "@/mock/schedule";
+// #ifdef MP-WEIXIN
+import { initWxCloud } from "@/utils/wx-cloud";
+// #endif
 
 onLaunch(() => {
+  // #ifdef MP-WEIXIN
+  initWxCloud();
+  initSchedulesAsync().catch((e: unknown) => {
+    console.error("[App] initSchedulesAsync failed", e);
+    initSchedules();
+  });
+  // #endif
+  // #ifndef MP-WEIXIN
   initSchedules();
+  // #endif
 });
 onShow(() => {
-  // console.log('App Show')
+  // 云端拉取由各页面的 useScheduleSync 负责，避免与页面 onShow 重复请求
 });
 onHide(() => {
   // console.log('App Hide')
